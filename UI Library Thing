@@ -3010,7 +3010,7 @@ function Library.AddMultiDropdown(parent, cfg)
 		allButton = nil
 		allSelected = false
 
-		local function createOptionBtn(opt, isAll)
+		local function createOptionButton(opt, isAll)
 			local optBtn = Instance.new("TextButton", optionsScroll)
 			optBtn.Size = UDim2.new(1,0,1,0)
 			optBtn.BackgroundColor3 = btnBgCol
@@ -3060,7 +3060,7 @@ function Library.AddMultiDropdown(parent, cfg)
 			return optBtn
 		end
 
-		local allBtn = createOptionBtn("All", true)
+		local allBtn = createOptionButton("All", true)
 		allButton = allBtn
 		optionButtons["__ALL__"] = allBtn
 
@@ -3070,7 +3070,7 @@ function Library.AddMultiDropdown(parent, cfg)
 		local optionButtonsList = {}
 
 		for i, opt in ipairs(options) do
-			local optBtn = createOptionBtn(opt, false)
+			local optBtn = createOptionButton(opt, false)
 			optionButtons[opt] = optBtn
 			optionButtonsList[opt] = optBtn
 			local isSelected = selectedMap[opt] or false
