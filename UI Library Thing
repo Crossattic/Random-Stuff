@@ -693,7 +693,7 @@ function Library.ColorChange(...)
 end
 function Library.ColorDarken(r,g,b) return function(dur) return {Color={r or 0, g or 0, b or 0}, Duration=dur or 0.05} end end
 
--- ===================== WINDOW (with Tab ButtonFx support) =====================
+-- ===================== WINDOW =====================
 function Library.CreateWindow(cfg)
 	assert(type(cfg)=="table")
 	local theme = cfg.Theme or Library.AddTheme({})
@@ -907,7 +907,7 @@ function Library.AddTab(window, tabCfg)
 	return tabHandle
 end
 
--- ===================== SECTION TITLE (unchanged) =====================
+-- ===================== SECTION TITLE =====================
 function Library.AddSectionTitle(tabHandle, cfg)
 	assert(tabHandle and tabHandle.Page); cfg = cfg or {}
 	local baseTheme = cfg.Theme or tabHandle.Theme or {}
@@ -967,7 +967,7 @@ function Library.AddSectionTitle(tabHandle, cfg)
 	return frame
 end
 
--- ===================== DESCRIPTION CARD (unchanged) =====================
+-- ===================== DESCRIPTION CARD =====================
 function Library.AddDescriptionCard(tabHandle, cardCfg)
 	assert(tabHandle and tabHandle.Page and type(cardCfg)=="table")
 	local baseTheme = cardCfg.Theme or tabHandle.Theme or {}
@@ -1048,7 +1048,7 @@ function Library.AddDescriptionCard(tabHandle, cardCfg)
 	return {Frame=cardFrame, Theme=baseTheme, CardType=cardCfg.CardType or 1}
 end
 
--- ===================== BUTTON CARD (unchanged) =====================
+-- ===================== BUTTON CARD =====================
 function Library.AddButtonCard(tabHandle, cardCfg)
 	assert(tabHandle and tabHandle.Page and type(cardCfg)=="table")
 	local baseTheme = cardCfg.Theme or tabHandle.Theme or {}
@@ -1132,7 +1132,7 @@ function Library.AddButtonCard(tabHandle, cardCfg)
 	return handle
 end
 
--- ===================== REGULAR BUTTON (with effects) =====================
+-- ===================== REGULAR BUTTON =====================
 function Library.AddButton(parent, cfg)
 	local scrollFrame = parent.ScrollFrame or parent
 	assert(scrollFrame:IsA("ScrollingFrame"))
@@ -1194,7 +1194,7 @@ function Library.AddButton(parent, cfg)
 	return btn
 end
 
--- ===================== KNOB BUTTON (with effects + icon2 swap) =====================
+-- ===================== KNOB BUTTON =====================
 function Library.AddKnobButton(parent, cfg)
 	local scrollFrame = parent.ScrollFrame or parent
 	assert(scrollFrame:IsA("ScrollingFrame"))
@@ -1298,7 +1298,7 @@ function Library.AddKnobButton(parent, cfg)
 	return container
 end
 
--- ===================== DROPDOWN (unchanged) =====================
+-- ===================== DROPDOWN =====================
 function Library.AddDropdown(parent, cfg)
 	local scrollFrame = parent.ScrollFrame or parent
 	assert(scrollFrame:IsA("ScrollingFrame"))
@@ -1583,6 +1583,7 @@ function Library.AddMultiDropdown(parent, cfg)
 	local container = Instance.new("Frame"); container.BackgroundTransparency = 1; container.Size = UDim2.new(0,buttonW,0,totalHeight); container.Position = UDim2.new(1, xOffset-buttonW, 0.5, -buttonCenterOffset); container.ZIndex = 5; container.Parent = scrollFrame
 	local btn, labelObj, arrowImg = nil, nil, nil
 	local popupData = {Frame=nil, Open=false, Width=0, Height=0, UserInputConnection=nil, RenderConnection=nil}
+	local selectedValue = "None"
 	local function updateButtonText()
 		local list = {}
 		for _, opt in ipairs(options) do if selectedOptions[opt] then table.insert(list, opt) end end
@@ -1666,7 +1667,6 @@ function Library.AddMultiDropdown(parent, cfg)
 		local optionsScroll = Instance.new("ScrollingFrame", popupFrame); optionsScroll.Size = UDim2.new(0,contentW,0,contentH); optionsScroll.Position = UDim2.new(0,8,0,headerHeight+8); optionsScroll.BackgroundTransparency = 1; optionsScroll.BorderSizePixel = 0; optionsScroll.ZIndex = 103; optionsScroll.ScrollBarThickness = 3; optionsScroll.ScrollBarImageColor3 = boardTitleCol or Color3.fromRGB(255,255,255); optionsScroll.CanvasSize = UDim2.new(0,contentW,0,contentH)
 		local gridLayout = Instance.new("UIGridLayout", optionsScroll); gridLayout.FillDirection = Enum.FillDirection.Vertical; gridLayout.FillDirectionMaxCells = maxPerColumn; gridLayout.CellSize = UDim2.new(0,cellW,0,cellH); gridLayout.CellPadding = UDim2.new(0,cellPadding,0,cellPadding); gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center; gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		local gridPad = Instance.new("UIPadding", optionsScroll); gridPad.PaddingTop = UDim.new(0,gridPadding); gridPad.PaddingBottom = UDim.new(0,gridPadding); gridPad.PaddingLeft = UDim.new(0,gridPadding); gridPad.PaddingRight = UDim.new(0,gridPadding)
-		local optionButtons = {}
 		for i, opt in ipairs(options) do
 			local optFrame = Instance.new("Frame", optionsScroll); optFrame.Size = UDim2.new(1,0,1,0); optFrame.BackgroundTransparency = 1
 			local optBtn = Instance.new("TextButton", optFrame); optBtn.Size = UDim2.new(1,0,1,0); optBtn.Position = UDim2.new(0,0,0,0); optBtn.BackgroundColor3 = btnBgCol; optBtn.BackgroundTransparency = btnBgTrans; optBtn.Text = ""; optBtn.AutoButtonColor = false; optBtn.BorderSizePixel = 0; optBtn.ZIndex = 104
@@ -1674,11 +1674,12 @@ function Library.AddMultiDropdown(parent, cfg)
 			if btnOlThick>0 then
 				local s = Instance.new("UIStroke", optBtn); s.Thickness = btnOlThick; s.Color = btnOlCol; s.Transparency = btnOlTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			end
-			local checkLabel = Instance.new("TextLabel", optFrame); checkLabel.BackgroundTransparency = 1; checkLabel.Text = selectedOptions[opt] and "✓ " or "  "; checkLabel.Text += opt; checkLabel.Font = btnTextFont; checkLabel.TextSize = btnTextSz; checkLabel.TextColor3 = btnTextCol; checkLabel.TextTransparency = btnTextTrans; checkLabel.RichText = true; checkLabel.TextXAlignment = Enum.TextXAlignment.Left; checkLabel.ZIndex = 105; checkLabel.Size = UDim2.new(1,-8,1,0); checkLabel.Position = UDim2.new(0,6,0,0)
-			optionButtons[opt] = {Button=optBtn, Label=checkLabel}
+			local checkLabel = Instance.new("TextLabel", optFrame); checkLabel.BackgroundTransparency = 1
+			checkLabel.Text = (selectedOptions[opt] and "✓ " or "  ") .. opt
+			checkLabel.Font = btnTextFont; checkLabel.TextSize = btnTextSz; checkLabel.TextColor3 = btnTextCol; checkLabel.TextTransparency = btnTextTrans; checkLabel.RichText = true; checkLabel.TextXAlignment = Enum.TextXAlignment.Left; checkLabel.ZIndex = 105; checkLabel.Size = UDim2.new(1,-8,1,0); checkLabel.Position = UDim2.new(0,6,0,0)
 			optBtn.MouseButton1Click:Connect(function()
 				selectedOptions[opt] = not selectedOptions[opt]
-				checkLabel.Text = selectedOptions[opt] and "✓ " or "  "; checkLabel.Text += opt
+				checkLabel.Text = (selectedOptions[opt] and "✓ " or "  ") .. opt
 				updateButtonText()
 				local sel = {}
 				for _, o in ipairs(options) do if selectedOptions[o] then table.insert(sel, o) end end
@@ -1728,7 +1729,7 @@ function Library.AddMultiDropdown(parent, cfg)
 	return btn
 end
 
--- ===================== TEXT BOX =====================
+-- ===================== TEXT BOX (Fixed - no ApplyEffects on TextBox) =====================
 function Library.AddTextBox(parent, cfg)
 	local scrollFrame = parent.ScrollFrame or parent
 	assert(scrollFrame:IsA("ScrollingFrame"))
@@ -1738,7 +1739,6 @@ function Library.AddTextBox(parent, cfg)
 	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40)); local bgTrans = resolve("BackgroundTransparency",0)
 	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120)); local olThick = resolve("OutlineThickness",2); local olTrans = resolve("OutlineTransparency",0)
 	local corners = resolve("CircularCorners",0)
-	local buttonFx = cfg.ButtonFx or Library.DefaultButtonFx
 	local labelText = resolve("Text",""); local labelCol = resolve("TextColor", Color3.fromRGB(240,240,240)); local labelFont = resolve("TextFont", Enum.Font.SourceSans); local labelSz = resolve("TextSize",12)
 	local labelOff = resolve("TextOffset",{0,0}); local textSide = resolve("TextSide"); local textGap = resolve("TextGap",2)
 	local defaultText = resolve("ButtonText","")
@@ -1749,33 +1749,30 @@ function Library.AddTextBox(parent, cfg)
 		container.Size = UDim2.new(0,buttonW,0,buttonH)
 		textBox = Instance.new("TextBox", container); textBox.Size = UDim2.new(0,buttonW,0,buttonH); textBox.Position = UDim2.new(0,0,0,0)
 		textBox.BackgroundColor3 = bgCol; textBox.BackgroundTransparency = bgTrans; textBox.Text = defaultText
-		textBox.TextColor3 = labelCol; textBox.Font = labelFont; textBox.TextSize = labelSz; textBox.BorderSizePixel = 0; textBox.ZIndex = 7
+		textBox.TextColor3 = labelCol; textBox.Font = labelFont; textBox.TextSize = labelSz; textBox.ClearTextOnFocus = false; textBox.BorderSizePixel = 0; textBox.ZIndex = 7
 		if corners>0 then Instance.new("UICorner", textBox).CornerRadius = UDim.new(0,corners) end
 		if olThick>0 then
 			local s = Instance.new("UIStroke", textBox); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		end
-		if buttonFx then Library.ApplyEffects(textBox, buttonFx) end
 	elseif textSide=="Up" then
 		local totalH = labelHeight + textGap + buttonH; container.Size = UDim2.new(0,buttonW,0,totalH)
 		labelObj = Instance.new("TextLabel", container); labelObj.BackgroundTransparency = 1; labelObj.Text = labelText; labelObj.Font = labelFont; labelObj.TextSize = labelSz; labelObj.TextColor3 = labelCol; labelObj.RichText = true; labelObj.ZIndex = 6; labelObj.TextXAlignment = Enum.TextXAlignment.Center; labelObj.Size = UDim2.new(1,0,0,labelHeight); labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, labelOff[2] or 0)
 		textBox = Instance.new("TextBox", container); textBox.Size = UDim2.new(0,buttonW,0,buttonH); textBox.Position = UDim2.new(0,0,0,labelHeight+textGap)
 		textBox.BackgroundColor3 = bgCol; textBox.BackgroundTransparency = bgTrans; textBox.Text = defaultText
-		textBox.TextColor3 = labelCol; textBox.Font = labelFont; textBox.TextSize = labelSz; textBox.BorderSizePixel = 0; textBox.ZIndex = 7
+		textBox.TextColor3 = labelCol; textBox.Font = labelFont; textBox.TextSize = labelSz; textBox.ClearTextOnFocus = false; textBox.BorderSizePixel = 0; textBox.ZIndex = 7
 		if corners>0 then Instance.new("UICorner", textBox).CornerRadius = UDim.new(0,corners) end
 		if olThick>0 then
 			local s = Instance.new("UIStroke", textBox); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		end
-		if buttonFx then Library.ApplyEffects(textBox, buttonFx) end
 	elseif textSide=="Down" then
 		local totalH = buttonH + textGap + labelHeight; container.Size = UDim2.new(0,buttonW,0,totalH)
 		textBox = Instance.new("TextBox", container); textBox.Size = UDim2.new(0,buttonW,0,buttonH); textBox.Position = UDim2.new(0,0,0,0)
 		textBox.BackgroundColor3 = bgCol; textBox.BackgroundTransparency = bgTrans; textBox.Text = defaultText
-		textBox.TextColor3 = labelCol; textBox.Font = labelFont; textBox.TextSize = labelSz; textBox.BorderSizePixel = 0; textBox.ZIndex = 7
+		textBox.TextColor3 = labelCol; textBox.Font = labelFont; textBox.TextSize = labelSz; textBox.ClearTextOnFocus = false; textBox.BorderSizePixel = 0; textBox.ZIndex = 7
 		if corners>0 then Instance.new("UICorner", textBox).CornerRadius = UDim.new(0,corners) end
 		if olThick>0 then
 			local s = Instance.new("UIStroke", textBox); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		end
-		if buttonFx then Library.ApplyEffects(textBox, buttonFx) end
 		labelObj = Instance.new("TextLabel", container); labelObj.BackgroundTransparency = 1; labelObj.Text = labelText; labelObj.Font = labelFont; labelObj.TextSize = labelSz; labelObj.TextColor3 = labelCol; labelObj.RichText = true; labelObj.ZIndex = 6; labelObj.TextXAlignment = Enum.TextXAlignment.Center; labelObj.Size = UDim2.new(1,0,0,labelHeight); labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, buttonH+textGap+(labelOff[2] or 0))
 	end
 	if parent.RefreshHeight then parent.RefreshHeight() end
