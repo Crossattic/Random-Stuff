@@ -1,10 +1,10 @@
+
 --[[
-	CROSSY'S ANIMATED UI LIBRARY – v9 (Full: hover, press, knob reset, dropdown, multi-dropdown, textbox, icon2, BoardSide, all effects)
+	CROSSY'S ANIMATED UI LIBRARY – v9 (Final: All effects, all components, consistent)
 ]]
 
 local Library = {}
 
--- ===================== GLOBAL SETTINGS =====================
 Library.GlobalSettings = { UIScale = 1 }
 
 local TweenService = game:GetService("TweenService")
@@ -15,10 +15,8 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- ===================== DROPDOWN GLOBALS =====================
 local openDropdownClosers = {}
 
--- ===================== CONSTANTS =====================
 local HOVER_SCALE_NORMAL   = 0.85
 local CLICK_SCALE_NORMAL   = 1.5
 local HOVER_SCALE_INVERTED = 1.15
@@ -32,8 +30,7 @@ local CLICK_TWEEN_CHOPPY = TweenInfo.new(0,    Enum.EasingStyle.Linear, Enum.Eas
 local AbsoluteColorCache = setmetatable({}, { __mode = "k" })
 local HighlightRegistry = setmetatable({}, { __mode = "k" })
 
--- ===================== INTERNAL HELPERS =====================
-
+-- ===================== HELPERS =====================
 local function formatAsset(asset)
 	if not asset then return nil end
 	if asset == "AvatarIcon" then return "rbxthumb://type=AvatarHeadShot&id="..LocalPlayer.UserId.."&w=420&h=420" end
@@ -203,7 +200,6 @@ local function makeDraggable(frame)
 	end)
 end
 
--- ===================== CLOSE ALL DROPDOWNS =====================
 function Library._CloseAllDropdowns()
 	for _, c in ipairs(openDropdownClosers) do c() end
 	openDropdownClosers = {}
@@ -600,7 +596,6 @@ function Library.AddTheme(cfg)
 	return theme
 end
 
--- === Effect constructors ===
 function Library.CreateButtonFx() return {EffectsData = {}} end
 Library.DefaultButtonFx = Library.CreateButtonFx()
 
@@ -658,7 +653,6 @@ function Library.OptionHighlightEffect(fx, cfg)
 	return fx
 end
 
--- === Element constructors ===
 local function createElement(name, ...)
 	local args = {...}; local steps = {}
 	for _, v in ipairs(args) do
