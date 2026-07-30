@@ -1,0 +1,3222 @@
+--[[
+	CROSSY'S ANIMATED UI LIBRARY – v10 (Full features: Tabs, Buttons, Knobs, Dropdowns, MultiDropdown, TextBox)
+]]
+
+local Library = {}
+
+-- ===================== GLOBAL SETTINGS =====================
+Library.GlobalSettings = { UIScale = 1 }
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local TextService = game:GetService("TextService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ===================== DROPDOWN GLOBALS =====================
+local openDropdownClosers = {}
+
+-- ===================== CONSTANTS =====================
+local HOVER_SCALE_NORMAL   = 0.85
+local CLICK_SCALE_NORMAL   = 1.5
+local HOVER_SCALE_INVERTED = 1.15
+local CLICK_SCALE_INVERTED = 0.75
+
+local HOVER_TWEEN_SMOOTH = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local CLICK_TWEEN_SMOOTH = TweenInfo.new(0.3,  Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local HOVER_TWEEN_CHOPPY = TweenInfo.new(0,    Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local CLICK_TWEEN_CHOPPY = TweenInfo.new(0,    Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+
+local AbsoluteColorCache = setmetatable({}, { __mode = "k" })
+local HighlightRegistry = setmetatable({}, { __mode = "k" })
+
+-- ===================== INTERNAL HELPERS =====================
+
+local function formatAsset(asset)
+	if not asset then return nil end
+	if asset == "AvatarIcon" then return "rbxthumb://type=AvatarHeadShot&id="..LocalPlayer.UserId.."&w=420&h=420" end
+	if type(asset)=="number" then return "rbxassetid://"..asset end
+	local n = tostring(asset):match("%d+"); if n then return "rbxassetid://"..n end
+	local s = tostring(asset); if s:match("^rbx") or s:match("^http") then return s end
+end
+
+local function playSound(id, vol)
+	id = formatAsset(id); if not id then return end
+	vol = math.clamp(tonumber(vol) or 0.5, 0, 3)
+	task.spawn(function()
+		local s = Instance.new("Sound"); s.SoundId = id; s.Volume = vol; s.PlayOnRemove = true
+		s.Parent = game:GetService("SoundService"); s:Destroy()
+	end)
+end
+
+local function toColor3(v, def)
+	def = def or Color3.fromRGB(255,255,255)
+	if typeof(v)=="Color3" then return v end
+	if type(v)=="table" then
+		if v.R or v.r then return Color3.new(v.R or v.r, v.G or v.g, v.B or v.b)
+		elseif #v >= 3 then return Color3.fromRGB(v[1], v[2], v[3]) end
+	end
+	return def
+end
+
+local function addTextureToFrame(frame, tex, texSz, texTrans, texCol, cr)
+	if not tex then return end
+	local t = Instance.new("ImageLabel", frame); t.Size = UDim2.new(1,0,1,0); t.BackgroundTransparency = 1
+	t.Image = formatAsset(tex); t.ImageTransparency = texTrans or 0; t.ImageColor3 = texCol or Color3.fromRGB(255,255,255)
+	t.ScaleType = Enum.ScaleType.Tile
+	t.TileSize = (type(texSz)=="table" and UDim2.fromOffset(texSz[1] or 45, texSz[2] or 45)) or UDim2.fromOffset(45,45)
+	t.ZIndex = frame.ZIndex + 1
+	if cr and cr>0 then Instance.new("UICorner", t).CornerRadius = UDim.new(0,cr) end
+	return t
+end
+
+local function findKnob(inst)
+	for _,c in ipairs(inst:GetDescendants()) do if c.Name=="Knob" and c:IsA("Frame") then return c end end
+end
+
+local function registerAbsoluteColors(inst)
+	if AbsoluteColorCache[inst] then return end
+	local d = {
+		Background = nil,
+		Text = {}, Icon = {}, Strokes = {},
+		KnobCircleBg = nil, KnobCircleOl = nil,
+		KnobTrackBg = nil, KnobTrackOl = nil
+	}
+	if inst:IsA("GuiObject") then d.Background = inst.BackgroundColor3 end
+	local ms = inst:FindFirstChildOfClass("UIStroke")
+	if ms then table.insert(d.Strokes, {Obj=ms, Prop="Color", Original=ms.Color, Type="BackgroundOutline"}) end
+	for _,c in ipairs(inst:GetDescendants()) do
+		if c:IsA("TextLabel") or c:IsA("TextBox") or c:IsA("TextButton") then
+			table.insert(d.Text, {Obj=c, Prop="TextColor3", Original=c.TextColor3})
+			local ts = c:FindFirstChildOfClass("UIStroke")
+			if ts then table.insert(d.Strokes, {Obj=ts, Prop="Color", Original=ts.Color, Type="TextOutline"}) end
+		elseif c:IsA("ImageLabel") or c:IsA("ImageButton") then
+			table.insert(d.Icon, {Obj=c, Prop="ImageColor3", Original=c.ImageColor3})
+		end
+		if c.Name=="Knob" and c:IsA("Frame") then
+			d.KnobCircleBg = c.BackgroundColor3
+			local ks = c:FindFirstChildOfClass("UIStroke")
+			if ks then d.KnobCircleOl = {Obj=ks, Prop="Color", Original=ks.Color} end
+			local track = c.Parent
+			if track and track:IsA("Frame") and track.Name=="KnobTrack" then
+				d.KnobTrackBg = track.BackgroundColor3
+				local ts = track:FindFirstChildOfClass("UIStroke")
+				if ts then d.KnobTrackOl = {Obj=ts, Prop="Color", Original=ts.Color} end
+			end
+		end
+	end
+	AbsoluteColorCache[inst] = d
+end
+
+local function getTargetsByElement(inst)
+	local cache = AbsoluteColorCache[inst]
+	local t = {
+		Background = {}, BackgroundOutline = {}, Text = {}, TextOutline = {}, Icon = {},
+		KnobBackground = {}, KnobBackgroundOutline = {}, KnobTrack = {}, KnobTrackOutline = {},
+	}
+	if inst:IsA("GuiObject") then
+		table.insert(t.Background, {Obj=inst, Prop="BackgroundColor3", Original=cache and cache.Background or inst.BackgroundColor3})
+	end
+	if cache and cache.Strokes then
+		for _,s in ipairs(cache.Strokes) do
+			if s.Type=="BackgroundOutline" then table.insert(t.BackgroundOutline, s)
+			elseif s.Type=="TextOutline" then table.insert(t.TextOutline, s) end
+		end
+	end
+	if cache then
+		for _,x in ipairs(cache.Text) do table.insert(t.Text, x) end
+		for _,x in ipairs(cache.Icon) do table.insert(t.Icon, x) end
+	end
+	local knob = findKnob(inst)
+	if knob then
+		table.insert(t.KnobBackground, {Obj=knob, Prop="BackgroundColor3", Original=cache and cache.KnobCircleBg or knob.BackgroundColor3})
+		local ks = knob:FindFirstChildOfClass("UIStroke")
+		if ks then
+			table.insert(t.KnobBackgroundOutline, {Obj=ks, Prop="Color", Original=cache and cache.KnobCircleOl and cache.KnobCircleOl.Original or ks.Color})
+		end
+		local track = knob.Parent
+		if track and track:IsA("Frame") and track.Name=="KnobTrack" then
+			table.insert(t.KnobTrack, {Obj=track, Prop="BackgroundColor3", Original=cache and cache.KnobTrackBg or track.BackgroundColor3})
+			local ts = track:FindFirstChildOfClass("UIStroke")
+			if ts then
+				table.insert(t.KnobTrackOutline, {Obj=ts, Prop="Color", Original=cache and cache.KnobTrackOl and cache.KnobTrackOl.Original or ts.Color})
+			end
+		end
+	end
+	return t
+end
+
+local function normalizeSequence(data)
+	if not data then return nil end
+	if data.Sequence then return data.Sequence end
+	if data.Color ~= nil then return {data} end
+	return data
+end
+
+local function applyHighlightStep(step, elemName, targets, tweenStore)
+	local dur = step.Duration or 0.05
+	if step.Color == nil then return end
+	local function playTween(obj, prop, col)
+		if tweenStore[elemName] then tweenStore[elemName]:Cancel() end
+		local tw = TweenService:Create(obj, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {[prop] = col})
+		tweenStore[elemName] = tw; tw:Play(); tw.Completed:Wait(); tweenStore[elemName] = nil
+	end
+	local function getCol(original, stepCol)
+		if stepCol=="Original" then return original
+		elseif typeof(stepCol)=="Color3" then return stepCol
+		elseif type(stepCol)=="table" and #stepCol>=3 then
+			return Color3.new(math.clamp(original.R+stepCol[1]/255,0,1), math.clamp(original.G+stepCol[2]/255,0,1), math.clamp(original.B+stepCol[3]/255,0,1))
+		else return original end
+	end
+	local map = {
+		Background = targets.Background,
+		BackgroundOutline = targets.BackgroundOutline,
+		KnobBackground = targets.KnobBackground,
+		KnobBackgroundOutline = targets.KnobBackgroundOutline,
+		KnobTrack = targets.KnobTrack,
+		KnobTrackOutline = targets.KnobTrackOutline,
+		Text = targets.Text,
+		TextOutline = targets.TextOutline,
+		Icon = targets.Icon,
+	}
+	local list = map[elemName]
+	if not list then return end
+	for _, t in ipairs(list) do
+		local targetCol
+		if elemName:find("Outline") or elemName:find("TrackOutline") then
+			if step.Color == "Original" then targetCol = t.Original
+			elseif typeof(step.Color) == "Color3" then targetCol = step.Color
+			elseif type(step.Color) == "table" and #step.Color >= 3 then
+				targetCol = Color3.new(math.clamp(t.Original.R + step.Color[1]/255,0,1), math.clamp(t.Original.G + step.Color[2]/255,0,1), math.clamp(t.Original.B + step.Color[3]/255,0,1))
+			else targetCol = t.Original end
+		else
+			targetCol = getCol(t.Original, step.Color)
+		end
+		playTween(t.Obj, t.Prop, targetCol)
+	end
+end
+
+local function applyFirstStepInstant(step, elemName, targets)
+	if step.Color == nil then return end
+	local function setCol(t, col) t.Obj[t.Prop] = col end
+	local map = {
+		Background = targets.Background,
+		BackgroundOutline = targets.BackgroundOutline,
+		KnobBackground = targets.KnobBackground,
+		KnobBackgroundOutline = targets.KnobBackgroundOutline,
+		KnobTrack = targets.KnobTrack,
+		KnobTrackOutline = targets.KnobTrackOutline,
+		Text = targets.Text,
+		TextOutline = targets.TextOutline,
+		Icon = targets.Icon,
+	}
+	local list = map[elemName]; if not list then return end
+	for _, t in ipairs(list) do
+		local col
+		if elemName:find("Outline") or elemName:find("TrackOutline") then
+			if step.Color == "Original" then col = t.Original
+			elseif typeof(step.Color) == "Color3" then col = step.Color
+			elseif type(step.Color) == "table" and #step.Color >= 3 then
+				col = Color3.new(math.clamp(t.Original.R + step.Color[1]/255,0,1), math.clamp(t.Original.G + step.Color[2]/255,0,1), math.clamp(t.Original.B + step.Color[3]/255,0,1))
+			else col = t.Original end
+		else
+			if step.Color=="Original" then col = t.Original
+			elseif typeof(step.Color)=="Color3" then col = step.Color
+			elseif type(step.Color)=="table" and #step.Color>=3 then
+				col = Color3.new(math.clamp(t.Original.R+step.Color[1]/255,0,1), math.clamp(t.Original.G+step.Color[2]/255,0,1), math.clamp(t.Original.B+step.Color[3]/255,0,1))
+			else col = t.Original end
+		end
+		setCol(t, col)
+	end
+end
+
+local function makeDraggable(frame)
+	local dragging, dragInput, dragStart, startPos
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true; dragStart = input.Position; startPos = frame.Position
+			input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+		end
+	end)
+	frame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+end
+
+-- ===================== CLOSE ALL DROPDOWNS =====================
+function Library._CloseAllDropdowns()
+	for _, c in ipairs(openDropdownClosers) do c() end
+	openDropdownClosers = {}
+end
+
+-- ===================== BUILD HEADER =====================
+local function buildHeader(parent, iconAsset, iconSize, iconAlignment, iconOffset, iconCircular, iconColor, iconTransparency,
+	titleText, titleSize, titleColor, titleFont, titleTransparency, titleOutlineThickness, titleOutlineColor, titleOutlineTransparency,
+	titleOffset, titleAlignment)
+	iconAlignment = iconAlignment or "Left"; titleAlignment = titleAlignment or "Left"
+	iconColor = iconColor or Color3.fromRGB(255,255,255); iconTransparency = iconTransparency or 0
+	titleTransparency = titleTransparency or 0; titleOutlineTransparency = titleOutlineTransparency or 0
+	local iconSz = type(iconSize)=="number" and {iconSize,iconSize} or iconSize or {40,40}
+	local iconW, iconH = iconSz[1] or 40, iconSz[2] or 40
+	local iconImg, titleLabel = nil, nil
+	if iconAsset then
+		iconImg = Instance.new("ImageLabel", parent); iconImg.BackgroundTransparency = 1
+		iconImg.Size = UDim2.fromOffset(iconW, iconH); iconImg.Image = iconAsset
+		iconImg.ImageColor3 = iconColor; iconImg.ImageTransparency = iconTransparency; iconImg.ZIndex = 10
+		if iconAlignment == "Left" then iconImg.AnchorPoint = Vector2.new(0,0.5); iconImg.Position = UDim2.new(0, iconOffset[1] or 0, 0.5, iconOffset[2] or 0)
+		elseif iconAlignment == "Right" then iconImg.AnchorPoint = Vector2.new(1,0.5); iconImg.Position = UDim2.new(1, -(iconOffset[1] or 0), 0.5, iconOffset[2] or 0)
+		else iconImg.AnchorPoint = Vector2.new(0.5,0.5); iconImg.Position = UDim2.new(0.5, iconOffset[1] or 0, 0.5, iconOffset[2] or 0) end
+		if iconCircular>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCircular) end
+	end
+	if titleText and titleText ~= "" then
+		titleLabel = Instance.new("TextLabel", parent); titleLabel.BackgroundTransparency = 1; titleLabel.Text = titleText
+		titleLabel.Font = titleFont; titleLabel.TextSize = titleSize; titleLabel.TextColor3 = titleColor
+		titleLabel.TextTransparency = titleTransparency; titleLabel.RichText = true; titleLabel.ZIndex = 3
+		local align = (type(titleAlignment)=="string" and ({Left=Enum.TextXAlignment.Left, Center=Enum.TextXAlignment.Center, Right=Enum.TextXAlignment.Right})[titleAlignment]) or (typeof(titleAlignment)=="EnumItem" and titleAlignment) or Enum.TextXAlignment.Center
+		titleLabel.TextXAlignment = align
+		local offsetX, offsetY = titleOffset[1] or 0, titleOffset[2] or 0
+		local overlap = iconImg and iconAlignment == titleAlignment
+		if titleAlignment == "Center" then
+			titleLabel.Size = UDim2.new(1,0,1,0); titleLabel.AnchorPoint = Vector2.new(0.5,0.5); titleLabel.Position = UDim2.new(0.5, offsetX, 0.5, offsetY)
+		elseif overlap then
+			titleLabel.Size = UDim2.new(1,0,1,0)
+			if titleAlignment == "Left" then titleLabel.AnchorPoint = Vector2.new(0,0.5); titleLabel.Position = UDim2.new(0, offsetX, 0.5, offsetY)
+			elseif titleAlignment == "Right" then titleLabel.AnchorPoint = Vector2.new(1,0.5); titleLabel.Position = UDim2.new(1, -offsetX, 0.5, offsetY) end
+		else
+			titleLabel.Size = UDim2.new(1,0,1,0)
+			if titleAlignment == "Left" then titleLabel.AnchorPoint = Vector2.new(0,0.5); titleLabel.Position = UDim2.new(0, offsetX, 0.5, offsetY)
+			elseif titleAlignment == "Right" then titleLabel.AnchorPoint = Vector2.new(1,0.5); titleLabel.Position = UDim2.new(1, -offsetX, 0.5, offsetY) end
+		end
+		if titleOutlineThickness>0 then
+			local stroke = Instance.new("UIStroke", titleLabel); stroke.Thickness = titleOutlineThickness; stroke.Color = titleOutlineColor; stroke.Transparency = titleOutlineTransparency
+		end
+	end
+	return iconImg, titleLabel
+end
+
+-- ===================== BUILD BUTTON =====================
+local function buildIconTextButton(parent, cfg, defaultTheme)
+	defaultTheme = defaultTheme or {}
+	local hasIcon = cfg.Icon ~= nil; local hasText = cfg.Text and cfg.Text ~= ""
+	local iconSz = type(cfg.IconSize or defaultTheme.IconSize)=="number" and {cfg.IconSize or 16, cfg.IconSize or 16} or cfg.IconSize or defaultTheme.IconSize or {16,16}
+	local iconW, iconH = iconSz[1] or 16, iconSz[2] or 16
+	local iconAlign = cfg.IconAlignment or defaultTheme.IconAlignment or "Left"
+	local iconOff = cfg.IconOffset or defaultTheme.IconOffset or {0,0}
+	local iconCirc = cfg.IconCircular or defaultTheme.IconCircular or 0
+	local iconCol = cfg.IconColor or defaultTheme.IconColor or defaultTheme.TextColor or Color3.fromRGB(255,255,255)
+	local iconTrans = cfg.IconTransparency or defaultTheme.IconTransparency or 0
+	local textOff = cfg.TextOffset or {0,0}; local textSize = cfg.TextSize or defaultTheme.TextSize
+	local textAlign = cfg.TextAlignment or defaultTheme.TextAlignment or "Left"
+	local theme = cfg.Theme or {
+		BackgroundColor = cfg.BackgroundColor or defaultTheme.BackgroundColor,
+		OutlineColor = cfg.OutlineColor or defaultTheme.OutlineColor,
+		OutlineThickness = cfg.OutlineThickness or defaultTheme.OutlineThickness,
+		CircularCorners = cfg.CircularCorners or defaultTheme.CircularCorners,
+		TextColor = cfg.TextColor or defaultTheme.TextColor,
+		TextFont = cfg.TextFont or defaultTheme.TextFont,
+		TextOutlineThickness = cfg.TextOutlineThickness or defaultTheme.TextOutlineThickness,
+		TextOutlineColor = cfg.TextOutlineColor or defaultTheme.TextOutlineColor,
+		BackgroundTransparency = cfg.BackgroundTransparency or defaultTheme.BackgroundTransparency or 0,
+		BackgroundOutlineTransparency = cfg.BackgroundOutlineTransparency or defaultTheme.BackgroundOutlineTransparency or 0,
+		TextOutlineTransparency = cfg.TextOutlineTransparency or defaultTheme.TextOutlineTransparency or 0,
+	}
+	local btn = Instance.new("TextButton"); btn.AutoButtonColor = false; btn.BorderSizePixel = 0
+	btn.BackgroundColor3 = theme.BackgroundColor; btn.BackgroundTransparency = theme.BackgroundTransparency or 0; btn.Text = ""; btn.ZIndex = 20; btn.Parent = parent
+	if theme.CircularCorners>0 then Instance.new("UICorner", btn).CornerRadius = UDim.new(0, theme.CircularCorners) end
+	if theme.OutlineThickness>0 then
+		local s = Instance.new("UIStroke", btn); s.Thickness = theme.OutlineThickness; s.Color = theme.OutlineColor; s.Transparency = theme.BackgroundOutlineTransparency or 0; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	end
+	addTextureToFrame(btn, cfg.Texture or theme.Texture, cfg.TextureSize or theme.TextureSize, cfg.TextureTransparency or theme.TextureTransparency, cfg.TextureColor or theme.TextureColor, theme.CircularCorners)
+	local iconImg, textLbl = nil, nil
+	local overlap = hasIcon and hasText and iconAlign == textAlign
+	if hasIcon then
+		iconImg = Instance.new("ImageLabel", btn); iconImg.BackgroundTransparency = 1; iconImg.Size = UDim2.fromOffset(iconW, iconH)
+		iconImg.Image = formatAsset(cfg.Icon); iconImg.ImageColor3 = iconCol; iconImg.ImageTransparency = iconTrans; iconImg.ZIndex = btn.ZIndex+1
+		if iconAlign == "Left" then iconImg.AnchorPoint = Vector2.new(0,0.5); iconImg.Position = UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+		elseif iconAlign == "Right" then iconImg.AnchorPoint = Vector2.new(1,0.5); iconImg.Position = UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+		else iconImg.AnchorPoint = Vector2.new(0.5,0.5); iconImg.Position = UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0) end
+		if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0, iconCirc) end
+	end
+	if hasText then
+		textLbl = Instance.new("TextLabel", btn); textLbl.BackgroundTransparency = 1; textLbl.Text = cfg.Text; textLbl.Font = theme.TextFont
+		textLbl.TextSize = textSize; textLbl.TextColor3 = theme.TextColor; textLbl.RichText = true; textLbl.ZIndex = btn.ZIndex+1
+		if overlap then
+			textLbl.Size = UDim2.new(1,0,1,0)
+			if textAlign == "Left" then textLbl.AnchorPoint = Vector2.new(0,0.5); textLbl.Position = UDim2.new(0, textOff[1] or 0, 0.5, textOff[2] or 0)
+			elseif textAlign == "Right" then textLbl.AnchorPoint = Vector2.new(1,0.5); textLbl.Position = UDim2.new(1, -(textOff[1] or 0), 0.5, textOff[2] or 0)
+			else textLbl.AnchorPoint = Vector2.new(0.5,0.5); textLbl.Position = UDim2.new(0.5, textOff[1] or 0, 0.5, textOff[2] or 0) end
+		else
+			if hasIcon then
+				local iconWpx = iconW + 8
+				textLbl.Size = UDim2.new(1, -iconWpx, 1, 0)
+				if iconAlign == "Left" then textLbl.Position = UDim2.new(0, iconWpx, 0, 0)
+				elseif iconAlign == "Right" then textLbl.Position = UDim2.new(0, 0, 0, 0)
+				else textLbl.Size = UDim2.new(1,0,1,0); textLbl.Position = UDim2.new(0,0,0,0) end
+			else textLbl.Size = UDim2.new(1,0,1,0); textLbl.Position = UDim2.new(0,0,0,0) end
+			if textOff and #textOff>=2 then textLbl.Position = textLbl.Position + UDim2.fromOffset(textOff[1] or 0, textOff[2] or 0) end
+		end
+		textLbl.TextXAlignment = (type(textAlign)=="string" and ({Left=Enum.TextXAlignment.Left, Center=Enum.TextXAlignment.Center, Right=Enum.TextXAlignment.Right})[textAlign]) or (typeof(textAlign)=="EnumItem" and textAlign) or Enum.TextXAlignment.Center
+		if theme.TextOutlineThickness>0 then
+			local s = Instance.new("UIStroke", textLbl); s.Thickness = theme.TextOutlineThickness; s.Color = theme.TextOutlineColor; s.Transparency = theme.TextOutlineTransparency or 0
+		end
+	end
+	return btn, iconImg, textLbl
+end
+
+-- ===================== EFFECTS APPLICATION =====================
+function Library.ApplyEffects(instance, normalFx, selectedFx, selectedState, highlightFx, highlightKey, selectedKeyPrefix)
+	highlightKey = highlightKey or "Highlight"
+	selectedKeyPrefix = selectedKeyPrefix or "Selected"
+	if not normalFx or not normalFx.EffectsData then return end
+	if instance:IsA("GuiButton") then instance.AutoButtonColor = false end
+	registerAbsoluteColors(instance)
+	instance.AnchorPoint = Vector2.new(0.5,0.5)
+	instance.Position = instance.Position + UDim2.fromOffset(instance.Size.X.Offset/2, instance.Size.Y.Offset/2)
+	local scale = instance:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", instance)
+	scale.Scale = 1
+	local hovering, currentHoverId, highlightId = false, 0, 0
+	local highlightTweens, hoverTweens = {}, {}
+	local pressActive, currentPressId = false, 0
+	local highlightThreads, highlightPausedByHover, highlightPausedByPress, hoverResetPending = {}, false, false, false
+	local lastPressTime = 0
+	local PRESS_COOLDOWN = 0.2
+
+	local function getElementNames(elements)
+		local names = {}
+		if elements then for _, e in ipairs(elements) do if e.Name then names[e.Name] = true end end end
+		return names
+	end
+	local function getEffectData(effectType)
+		if selectedState and selectedState.value and selectedFx and selectedFx.EffectsData[selectedKeyPrefix..effectType] then 
+			return selectedFx.EffectsData[selectedKeyPrefix..effectType] 
+		end
+		return normalFx.EffectsData[effectType]
+	end
+	local function getHighlightConfig()
+		if highlightFx and highlightFx.EffectsData and highlightFx.EffectsData[highlightKey] then return highlightFx.EffectsData[highlightKey] end
+	end
+	local function hoverOverlapsHighlight(hd)
+		if not hd or not hd.Elements then return false end
+		local hc = getHighlightConfig(); if not hc or not hc.Elements then return false end
+		local hn = getElementNames(hd.Elements); local hcn = getElementNames(hc.Elements)
+		for n,_ in pairs(hn) do if hcn[n] then return true end end
+		return false
+	end
+	local function pressOverlapsHighlight(pd)
+		if not pd or not pd.Elements then return false end
+		local hc = getHighlightConfig(); if not hc or not hc.Elements then return false end
+		local pn = getElementNames(pd.Elements); local hcn = getElementNames(hc.Elements)
+		for n,_ in pairs(pn) do if hcn[n] then return true end end
+		return false
+	end
+	local function resetHighlightColors()
+		local targets = getTargetsByElement(instance)
+		for _, list in pairs(targets) do for _, t in ipairs(list) do t.Obj[t.Prop] = t.Original end end
+		local knob = findKnob(instance)
+		if knob then
+			local cache = AbsoluteColorCache[instance]
+			if cache then
+				if cache.KnobCircleBg then knob.BackgroundColor3 = cache.KnobCircleBg end
+				local ks = knob:FindFirstChildOfClass("UIStroke")
+				if ks and cache.KnobCircleOl then ks.Color = cache.KnobCircleOl.Original end
+				local track = knob.Parent
+				if track and track:IsA("Frame") and track.Name=="KnobTrack" then
+					if cache.KnobTrackBg then track.BackgroundColor3 = cache.KnobTrackBg end
+					local ts = track:FindFirstChildOfClass("UIStroke")
+					if ts and cache.KnobTrackOl then ts.Color = cache.KnobTrackOl.Original end
+				end
+			end
+		end
+	end
+	local function stopHighlight()
+		highlightId = highlightId + 1
+		for _, tw in pairs(highlightTweens) do tw:Cancel() end; highlightTweens = {}
+		for _, th in pairs(highlightThreads) do if th then task.cancel(th) end end; highlightThreads = {}
+		resetHighlightColors()
+	end
+	local function startHighlight()
+		local hc = getHighlightConfig(); if not hc or not hc.Elements then return end
+		local myId = highlightId + 1; highlightId = myId
+		for _, tw in pairs(highlightTweens) do tw:Cancel() end; highlightTweens = {}
+		for _, th in pairs(highlightThreads) do if th then task.cancel(th) end end; highlightThreads = {}
+		local targets = getTargetsByElement(instance)
+		local hoverData = getEffectData("Hover"); local pauseOnHover = hoverData and hoverOverlapsHighlight(hoverData)
+		for _, elem in ipairs(hc.Elements) do
+			local steps = normalizeSequence(elem.Darkening or elem.OutlineColorChange); if not steps or #steps==0 then continue end
+			local name = elem.Name
+			local map = {Background=targets.Background, BackgroundOutline=targets.BackgroundOutline, KnobBackground=targets.KnobBackground, KnobBackgroundOutline=targets.KnobBackgroundOutline, KnobTrack=targets.KnobTrack, KnobTrackOutline=targets.KnobTrackOutline, Text=targets.Text, TextOutline=targets.TextOutline, Icon=targets.Icon}
+			local list = map[name]; if not list or #list==0 then continue end
+			local thread = task.spawn(function()
+				while selectedState.value and (not hovering or not pauseOnHover) and highlightId == myId do
+					for _, step in ipairs(steps) do
+						if not selectedState.value or (hovering and pauseOnHover) or highlightId ~= myId then break end
+						applyHighlightStep(step, name, targets, highlightTweens)
+					end
+					task.wait()
+				end
+				if not selectedState.value then resetHighlightColors() end
+			end)
+			highlightThreads[name] = thread
+		end
+	end
+	local function resetHoverVisuals()
+		for _, tw in pairs(hoverTweens) do tw:Cancel() end; hoverTweens = {}
+		TweenService:Create(scale, HOVER_TWEEN_SMOOTH, {Scale = 1}):Play()
+		local targets = getTargetsByElement(instance)
+		for _, list in pairs(targets) do for _, t in ipairs(list) do TweenService:Create(t.Obj, TweenInfo.new(0.15), {[t.Prop]=t.Original}):Play() end end
+		local cache = AbsoluteColorCache[instance]
+		if cache then
+			if cache.Background then TweenService:Create(instance, TweenInfo.new(0.15), {BackgroundColor3 = cache.Background}):Play() end
+			if cache.Strokes then for _, s in ipairs(cache.Strokes) do if s.Type=="BackgroundOutline" then TweenService:Create(s.Obj, TweenInfo.new(0.15), {Color=s.Original}):Play() end end end
+		end
+		local knob = findKnob(instance)
+		if knob then
+			local cache = AbsoluteColorCache[instance]
+			if cache and cache.KnobCircleBg then TweenService:Create(knob, TweenInfo.new(0.15), {BackgroundColor3 = cache.KnobCircleBg}):Play() end
+			local ks = knob:FindFirstChildOfClass("UIStroke")
+			if ks and cache and cache.KnobCircleOl then TweenService:Create(ks, TweenInfo.new(0.15), {Color=cache.KnobCircleOl.Original}):Play() end
+			local track = knob.Parent
+			if track and track:IsA("Frame") and track.Name=="KnobTrack" then
+				if cache and cache.KnobTrackBg then TweenService:Create(track, TweenInfo.new(0.15), {BackgroundColor3 = cache.KnobTrackBg}):Play() end
+				local ts = track:FindFirstChildOfClass("UIStroke")
+				if ts and cache and cache.KnobTrackOl then TweenService:Create(ts, TweenInfo.new(0.15), {Color=cache.KnobTrackOl.Original}):Play() end
+			end
+		end
+	end
+	local function applyHoverVisuals(hd, hoverId, applyColors)
+		if pressActive then return end
+		local info, targetScale
+		if hd.HoverType==1 then info,targetScale=HOVER_TWEEN_SMOOTH, HOVER_SCALE_NORMAL
+		elseif hd.HoverType==2 then info,targetScale=HOVER_TWEEN_CHOPPY, HOVER_SCALE_NORMAL
+		elseif hd.HoverType==3 then info,targetScale=HOVER_TWEEN_SMOOTH, HOVER_SCALE_INVERTED
+		elseif hd.HoverType==4 then info,targetScale=HOVER_TWEEN_CHOPPY, HOVER_SCALE_INVERTED end
+		TweenService:Create(scale, info, {Scale=targetScale}):Play()
+		if not applyColors then return end
+		for _, elem in ipairs(hd.Elements or {}) do
+			local steps = normalizeSequence(elem.Darkening or elem.OutlineColorChange); if not steps then steps = {} end
+			local targets = getTargetsByElement(instance)
+			local name = elem.Name
+			local map = {Background=targets.Background, BackgroundOutline=targets.BackgroundOutline, KnobBackground=targets.KnobBackground, KnobBackgroundOutline=targets.KnobBackgroundOutline, KnobTrack=targets.KnobTrack, KnobTrackOutline=targets.KnobTrackOutline, Text=targets.Text, TextOutline=targets.TextOutline, Icon=targets.Icon}
+			local list = map[name]; if not list or #list==0 then continue end
+			task.spawn(function()
+				local myHoverId = hoverId
+				while hovering and myHoverId == currentHoverId do
+					for _, step in ipairs(steps) do
+						if not hovering or myHoverId ~= currentHoverId then break end
+						applyHighlightStep(step, name, targets, hoverTweens)
+					end
+					task.wait()
+				end
+			end)
+		end
+	end
+	HighlightRegistry[instance] = { Start = startHighlight, Stop = stopHighlight }
+
+	instance.MouseEnter:Connect(function()
+		hovering = true; currentHoverId = currentHoverId + 1; local myId = currentHoverId; hoverResetPending = false
+		local hd = getEffectData("Hover")
+		if hd then
+			if hd.SoundFx then playSound(hd.SoundFx, hd.SoundFxVolume) end
+			if hoverOverlapsHighlight(hd) then highlightPausedByHover = true; stopHighlight() end
+		end
+		if pressActive then return end
+		if hd then applyHoverVisuals(hd, myId, true) end
+	end)
+
+	instance.MouseLeave:Connect(function()
+		hovering = false; currentHoverId = currentHoverId + 1; hoverResetPending = false
+		if pressActive then hoverResetPending = true; return end
+		resetHoverVisuals()
+		if highlightPausedByHover and selectedState and selectedState.value then highlightPausedByHover = false; startHighlight() end
+	end)
+
+	instance.MouseButton1Click:Connect(function()
+		local now = tick()
+		if now - lastPressTime < PRESS_COOLDOWN then return end
+		lastPressTime = now
+
+		hovering = false; currentHoverId = currentHoverId + 1; hoverResetPending = false
+		for _, tw in pairs(hoverTweens) do tw:Cancel() end; hoverTweens = {}
+		local pd = getEffectData("Press")
+		if pd then
+			if pd.SoundFx then playSound(pd.SoundFx, pd.SoundFxVolume) end
+			local info, clickScale, returnScale
+			if pd.PressType==1 then info,clickScale,returnScale=CLICK_TWEEN_SMOOTH, CLICK_SCALE_NORMAL, 1
+			elseif pd.PressType==2 then info,clickScale,returnScale=CLICK_TWEEN_CHOPPY, CLICK_SCALE_NORMAL, 1
+			elseif pd.PressType==3 then info,clickScale,returnScale=CLICK_TWEEN_SMOOTH, CLICK_SCALE_INVERTED, 1
+			elseif pd.PressType==4 then info,clickScale,returnScale=CLICK_TWEEN_CHOPPY, CLICK_SCALE_INVERTED, 1 end
+			if info then scale.Scale = clickScale; TweenService:Create(scale, info, {Scale=returnScale}):Play() end
+			local pressElements = pd.Elements or {}
+			local overlap = pressOverlapsHighlight(pd)
+			if overlap then highlightPausedByPress = true; stopHighlight() end
+			pressActive = true; currentPressId = currentPressId + 1; local myPressId = currentPressId
+			task.spawn(function()
+				local pressDuration = 0
+				for _, elem in ipairs(pressElements) do
+					local steps = normalizeSequence(elem.Darkening or elem.OutlineColorChange)
+					if steps and #steps>0 then
+						local targets = getTargetsByElement(instance)
+						applyFirstStepInstant(steps[1], elem.Name, targets)
+						local totalDur = 0
+						for i=2,#steps do totalDur = totalDur + (steps[i].Duration or 0.05) end
+						if totalDur > pressDuration then pressDuration = totalDur end
+						for i=2,#steps do task.spawn(function() applyHighlightStep(steps[i], elem.Name, targets, {}) end) end
+					end
+				end
+				if pressDuration>0 then task.wait(pressDuration+0.05) end
+				if currentPressId == myPressId then
+					pressActive = false
+					for _, elem in ipairs(pressElements) do
+						local targets = getTargetsByElement(instance)
+						local list = ({Background=targets.Background, BackgroundOutline=targets.BackgroundOutline, KnobBackground=targets.KnobBackground, KnobBackgroundOutline=targets.KnobBackgroundOutline, KnobTrack=targets.KnobTrack, KnobTrackOutline=targets.KnobTrackOutline, Text=targets.Text, TextOutline=targets.TextOutline, Icon=targets.Icon})[elem.Name]
+						if list then for _, t in ipairs(list) do TweenService:Create(t.Obj, TweenInfo.new(0.15), {[t.Prop]=t.Original}):Play() end end
+					end
+					if overlap and selectedState and selectedState.value then highlightPausedByPress = false; startHighlight() end
+					if not hovering and hoverResetPending then resetHoverVisuals(); hoverResetPending = false
+					elseif hovering then
+						local hd = getEffectData("Hover")
+						if hd then currentHoverId = currentHoverId + 1; applyHoverVisuals(hd, currentHoverId, true) end
+					end
+				end
+			end)
+		end
+	end)
+
+	if selectedState and selectedState.value then startHighlight() end
+end
+
+-- ===================== PUBLIC API =====================
+
+function Library.AddTheme(cfg)
+	assert(type(cfg)=="table")
+	local theme = {}
+	for k,v in pairs(cfg) do theme[k] = v end
+	
+	-- ========== VISUAL PROPERTIES ==========
+	theme.BackgroundColor = toColor3(cfg.BackgroundColor, Color3.fromRGB(30,30,40))
+	theme.BackgroundTransparency = cfg.BackgroundTransparency or 0
+	theme.BackgroundOutlineTransparency = cfg.BackgroundOutlineTransparency or 0
+	
+	theme.OutlineColor = toColor3(cfg.OutlineColor, Color3.fromRGB(80,80,120))
+	theme.OutlineThickness = cfg.OutlineThickness or 2
+	theme.OutlineTransparency = cfg.OutlineTransparency or 0
+	
+	theme.CircularCorners = cfg.CircularCorners or 0
+	
+	theme.Texture = formatAsset(cfg.Texture)
+	theme.TextureSize = cfg.TextureSize or {45,45}
+	theme.TextureTransparency = cfg.TextureTransparency or 0
+	theme.TextureColor = toColor3(cfg.TextureColor, Color3.fromRGB(255,255,255))
+	
+	-- ========== TEXT PROPERTIES (labels OUTSIDE buttons) ==========
+	theme.Text = cfg.Text or ""
+	theme.TextColor = toColor3(cfg.TextColor, Color3.fromRGB(240,240,240))
+	theme.TextFont = cfg.TextFont or Enum.Font.SourceSans
+	theme.TextSize = cfg.TextSize or 12
+	theme.TextTransparency = cfg.TextTransparency or 0
+	theme.TextAlignment = cfg.TextAlignment or "Left"
+	theme.TextOffset = cfg.TextOffset or {0,0}
+	theme.TextOutlineColor = toColor3(cfg.TextOutlineColor, Color3.fromRGB(0,0,0))
+	theme.TextOutlineThickness = cfg.TextOutlineThickness or 0
+	theme.TextOutlineTransparency = cfg.TextOutlineTransparency or 0
+	theme.TextSide = cfg.TextSide
+	theme.TextGap = cfg.TextGap or 2
+	
+	-- ========== BUTTON TEXT PROPERTIES (text INSIDE buttons) ==========
+	theme.ButtonText = cfg.ButtonText or ""
+	theme.ButtonTextColor = toColor3(cfg.ButtonTextColor, Color3.fromRGB(240,240,240))
+	theme.ButtonTextFont = cfg.ButtonTextFont or Enum.Font.SourceSans
+	theme.ButtonTextSize = cfg.ButtonTextSize or 12
+	theme.ButtonTextTransparency = cfg.ButtonTextTransparency or 0
+	theme.ButtonTextAlignment = cfg.ButtonTextAlignment or "Center"
+	theme.ButtonTextOffset = cfg.ButtonTextOffset or {0, 0}
+	theme.ButtonTextOutlineColor = toColor3(cfg.ButtonTextOutlineColor, Color3.fromRGB(0,0,0))
+	theme.ButtonTextOutlineThickness = cfg.ButtonTextOutlineThickness or 0
+	theme.ButtonTextOutlineTransparency = cfg.ButtonTextOutlineTransparency or 0
+	
+	-- ========== ICON 1 PROPERTIES ==========
+	theme.Icon = formatAsset(cfg.Icon)
+	theme.IconColor = toColor3(cfg.IconColor, Color3.fromRGB(255,255,255))
+	theme.IconSize = cfg.IconSize or {16,16}
+	theme.IconAlignment = cfg.IconAlignment or "Left"
+	theme.IconOffset = cfg.IconOffset or {0,0}
+	theme.IconTransparency = cfg.IconTransparency or 0
+	theme.IconCircular = cfg.IconCircular or 0
+	
+	-- ========== ICON 2 PROPERTIES ==========
+	theme.Icon2 = formatAsset(cfg.Icon2)
+	theme.IconColor2 = toColor3(cfg.IconColor2, Color3.fromRGB(255,255,255))
+	theme.IconSize2 = cfg.IconSize2 or {16,16}
+	theme.IconAlignment2 = cfg.IconAlignment2 or "Center"
+	theme.IconOffset2 = cfg.IconOffset2 or {0,0}
+	theme.IconTransparency2 = cfg.IconTransparency2 or 0
+	theme.IconCircular2 = cfg.IconCircular2 or 0
+	
+	-- ========== KNOB PROPERTIES ==========
+	theme.KnobBackgroundColor = toColor3(cfg.KnobBackgroundColor, Color3.fromRGB(255,255,255))
+	theme.KnobBackgroundTransparency = cfg.KnobBackgroundTransparency or 0
+	theme.KnobOutlineColor = toColor3(cfg.KnobOutlineColor, Color3.fromRGB(255,255,255))
+	theme.KnobOutlineThickness = cfg.KnobOutlineThickness or 1
+	theme.KnobOutlineTransparency = cfg.KnobOutlineTransparency or 0
+	theme.KnobTrackBackgroundColor = toColor3(cfg.KnobTrackBackgroundColor, Color3.fromRGB(80,80,100))
+	theme.KnobTrackBackgroundTransparency = cfg.KnobTrackBackgroundTransparency or 0
+	theme.KnobCornerRadius = cfg.KnobCornerRadius or 10
+	
+	-- ========== DROPDOWN PROPERTIES ==========
+	theme.BoardSide = cfg.BoardSide or "Left"
+	
+	-- ========== TEXTBOX PROPERTIES ==========
+	theme.Width = cfg.Width or 60
+	
+	-- ========== EFFECT PROPERTIES ==========
+	theme.ButtonFx = cfg.ButtonFx
+	theme.HighlightFx = cfg.HighlightFx
+	theme.TabHighlightFx = cfg.TabHighlightFx
+	theme.DropdownButtonFx = cfg.DropdownButtonFx
+	theme.DropdownHighlightFx = cfg.DropdownHighlightFx
+	theme.DropdownOptionFx = cfg.DropdownOptionFx
+	theme.DropdownOptionHighlightFx = cfg.DropdownOptionHighlightFx
+	theme.DropdownOptionSelectedFx = cfg.DropdownOptionSelectedFx
+	theme.DropdownSelectedFx = cfg.DropdownSelectedFx
+	theme.KnobButtonFx = cfg.KnobButtonFx
+	theme.KnobHighlightFx = cfg.KnobHighlightFx
+	theme.KnobOnFx = cfg.KnobOnFx
+	theme.RegularButtonFx = cfg.RegularButtonFx
+	theme.TextBoxFx = cfg.TextBoxFx
+	theme.TextBoxHighlightFx = cfg.TextBoxHighlightFx
+	
+	return theme
+end
+
+-- === Effect constructors ===
+function Library.CreateButtonFx() return {EffectsData = {}} end
+Library.DefaultButtonFx = Library.CreateButtonFx()
+
+function Library.AddEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg and cfg.Effect)
+	fx.EffectsData[cfg.Effect] = {HoverType=cfg.HoverType, PressType=cfg.PressType, SoundFx=cfg.SoundFx, SoundFxVolume=cfg.SoundFxVolume, Elements=cfg.Elements or {}}
+	return fx
+end
+
+function Library.AddTabSelectedEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg and cfg.Effect)
+	fx.EffectsData["Selected"..cfg.Effect] = {HoverType=cfg.HoverType, PressType=cfg.PressType, SoundFx=cfg.SoundFx, SoundFxVolume=cfg.SoundFxVolume, Elements=cfg.Elements or {}}
+	return fx
+end
+
+function Library.AddDropdownSelectedEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg and cfg.Effect)
+	fx.EffectsData["SelectedDropdown"..cfg.Effect] = {HoverType=cfg.HoverType, PressType=cfg.PressType, SoundFx=cfg.SoundFx, SoundFxVolume=cfg.SoundFxVolume, Elements=cfg.Elements or {}}
+	return fx
+end
+
+function Library.AddOptionSelectedEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg and cfg.Effect)
+	fx.EffectsData["SelectedOption"..cfg.Effect] = {
+		HoverType = cfg.HoverType,
+		PressType = cfg.PressType,
+		SoundFx = cfg.SoundFx,
+		SoundFxVolume = cfg.SoundFxVolume,
+		Elements = cfg.Elements or {}
+	}
+	return fx
+end
+
+function Library.TabHighlightEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg)
+	fx.EffectsData["Highlight"] = {Elements = cfg.Elements or {}}
+	return fx
+end
+
+function Library.DropdownHighlightEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg)
+	fx.EffectsData["DropdownHighlight"] = {Elements = cfg.Elements or {}}
+	return fx
+end
+
+function Library.OptionHighlightEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg)
+	fx.EffectsData["OptionHighlight"] = {Elements = cfg.Elements or {}}
+	return fx
+end
+
+function Library.KnobToggleEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg)
+	fx.EffectsData["KnobHighlight"] = {Elements = cfg.Elements or {}}
+	return fx
+end
+
+function Library.AddKnobOnEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg and cfg.Effect)
+	fx.EffectsData["KnobOn"..cfg.Effect] = {HoverType=cfg.HoverType, PressType=cfg.PressType, SoundFx=cfg.SoundFx, SoundFxVolume=cfg.SoundFxVolume, Elements=cfg.Elements or {}}
+	return fx
+end
+
+function Library.TextBoxHighlightEffect(fx, cfg)
+	assert(fx and fx.EffectsData and cfg)
+	fx.EffectsData["TextBoxHighlight"] = {Elements = cfg.Elements or {}}
+	return fx
+end
+
+-- === Element constructors ===
+local function createElement(name, ...)
+	local args = {...}; local steps = {}
+	for _, v in ipairs(args) do
+		if type(v)=="table" then
+			if not v.Color and not v.Trans and (v.Darkening or v.OutlineColorChange or v.Sequence) then
+				local seq = v.Sequence or (v.Darkening and v.Darkening.Sequence) or (v.OutlineColorChange and v.OutlineColorChange.Sequence)
+				if seq then for _, s in ipairs(seq) do table.insert(steps, s) end end
+			elseif v.Color then table.insert(steps, v) end
+		end
+	end
+	return {Name=name, Darkening = #steps>0 and {Sequence=steps} or nil}
+end
+
+function Library.Background(...) return createElement("Background", ...) end
+function Library.BackgroundOutline(...) return createElement("BackgroundOutline", ...) end
+function Library.Text(...) return createElement("Text", ...) end
+function Library.TextOutline(...) return createElement("TextOutline", ...) end
+function Library.Icon(...) return createElement("Icon", ...) end
+function Library.KnobBackground(...) return createElement("KnobBackground", ...) end
+function Library.KnobBackgroundOutline(...) return createElement("KnobBackgroundOutline", ...) end
+function Library.Knob(...) return createElement("KnobBackground", ...) end
+
+function Library.OutlineColorChange(data) return {Sequence=data.Sequence} end
+function Library.Darkening(arr) return {Sequence=arr} end
+function Library.Change(arr) return {Sequence=arr} end
+function Library.Sequence(arr) return arr end
+
+function Library.ColorChange(...)
+	local args = {...}
+	if #args==4 then return {Color=Color3.fromRGB(args[1],args[2],args[3]), Duration=args[4]}
+	elseif #args==2 then return {Color=args[1]=="Original" and "Original" or toColor3(args[1]), Duration=args[2]}
+	else return function(dur) return {Color=Color3.fromRGB(args[1],args[2],args[3]), Duration=dur} end
+	end
+end
+
+function Library.ColorDarken(r,g,b) return function(dur) return {Color={r or 0, g or 0, b or 0}, Duration=dur or 0.05} end end
+
+-- ===================== WINDOW =====================
+function Library.CreateWindow(cfg)
+	assert(type(cfg)=="table")
+	local theme = cfg.Theme or Library.AddTheme({})
+	local function resolve(k,d) return cfg[k]~=nil and cfg[k] or theme[k]~=nil and theme[k] or d end
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d)
+		if type(v)=="number" then return v,v end
+		if type(v)=="table" and #v>=2 then return v[1],v[2] end
+		return d[1] or 40, d[2] or 40
+	end
+	local winBgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40))
+	local winBgTrans = resolve("BackgroundTransparency", 0)
+	local winOlCol = resolve("OutlineColor", Color3.fromRGB(80,80,120))
+	local winOlThick = resolve("OutlineThickness", 2)
+	local winOlTrans = resolve("OutlineTransparency", 0)
+	local winCorners = resolve("CircularCorners", 0)
+	local winTex = resolve("Texture")
+	local winTexSz = resolve("TextureSize", {45,45})
+	local winTexTrans = resolve("TextureTransparency", 0)
+	local winTexCol = resolve("TextureColor", Color3.fromRGB(255,255,255))
+	local titleText = resolve("Text", "")
+	local titleSz = resolve("TextSize", 20)
+	local titleCol = resolve("TextColor", Color3.fromRGB(240,240,240))
+	local titleFont = resolve("TextFont", Enum.Font.SourceSans)
+	local titleTrans = resolve("TextTransparency", 0)
+	local titleOlCol = resolve("TextOutlineColor", Color3.fromRGB(0,0,0))
+	local titleOlThick = resolve("TextOutlineThickness", 0)
+	local titleOlTrans = resolve("TextOutlineTransparency", 0)
+	local titleOff = resolve("TextOffset", {0,0})
+	local titleAlign = resolve("TextAlignment", "Center")
+	local iconAsset = resolve("Icon")
+	local iconW, iconH = resolveIconSize("IconSize", {40,40})
+	local iconAlign = resolve("IconAlignment", "Left")
+	local iconOff = resolve("IconOffset", {0,0})
+	local iconCirc = resolve("IconCircular", 0)
+	local iconTrans = resolve("IconTransparency", 0)
+	local iconCol = resolve("IconColor", Color3.fromRGB(255,255,255))
+	local incToggle = cfg.IncludeToggleButton == true
+	local incExit = cfg.IncludeExitButton == true
+	local scl = cfg.UIScale or Library.GlobalSettings.UIScale or 1
+	local gui = Instance.new("ScreenGui"); gui.Name = "DefaultGuiCanvas"; gui.ResetOnSpawn = false; gui.Parent = PlayerGui
+	local main = Instance.new("Frame"); main.Name = "MainWindow"; main.Size = UDim2.new(0,500,0,300); main.Position = UDim2.new(0,50,0,50)
+	main.BackgroundColor3 = winBgCol; main.BackgroundTransparency = winBgTrans; main.BorderSizePixel = 0; main.ZIndex = 1; main.Active = true; main.Parent = gui
+	if scl~=1 then Instance.new("UIScale", main).Scale = scl end
+	if winCorners>0 then Instance.new("UICorner", main).CornerRadius = UDim.new(0,winCorners) end
+	if winOlThick>0 then
+		local s = Instance.new("UIStroke", main); s.Thickness = winOlThick; s.Color = winOlCol; s.Transparency = winOlTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	end
+	addTextureToFrame(main, winTex, winTexSz, winTexTrans, winTexCol, winCorners)
+	makeDraggable(main)
+
+	local header = Instance.new("Frame"); header.Name = "MyGuiHeader"; header.Size = UDim2.new(1,0,0,50); header.Position = UDim2.new(0,0,0,0)
+	header.BackgroundTransparency = 1; header.BorderSizePixel = 0; header.ZIndex = 3; header.Parent = main
+	if winCorners>0 then Instance.new("UICorner", header).CornerRadius = UDim.new(0,winCorners) end
+	if winOlThick>0 then
+		local s = Instance.new("UIStroke", header); s.Thickness = winOlThick; s.Color = winOlCol; s.Transparency = winOlTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	end
+	buildHeader(header, iconAsset, {iconW,iconH}, iconAlign, iconOff, iconCirc, iconCol, iconTrans,
+		titleText, titleSz, titleCol, titleFont, titleTrans, titleOlThick, titleOlCol, titleOlTrans, titleOff, titleAlign)
+
+	local tabScroller = Instance.new("ScrollingFrame"); tabScroller.Size = UDim2.new(0,143,0,247); tabScroller.Position = UDim2.new(0,0,0,53)
+	tabScroller.BackgroundTransparency = 1; tabScroller.BorderSizePixel = 0; tabScroller.ZIndex = 2; tabScroller.ScrollBarThickness = 3
+	tabScroller.ScrollBarImageColor3 = titleCol; tabScroller.Parent = main
+	if winCorners>0 then Instance.new("UICorner", tabScroller).CornerRadius = UDim.new(0,winCorners) end
+	local tabList = Instance.new("UIListLayout", tabScroller); tabList.FillDirection = Enum.FillDirection.Vertical
+	tabList.HorizontalAlignment = Enum.HorizontalAlignment.Center; tabList.VerticalAlignment = Enum.VerticalAlignment.Top; tabList.Padding = UDim.new(0,8); tabList.SortOrder = Enum.SortOrder.LayoutOrder
+	local tabPad = Instance.new("UIPadding", tabScroller); tabPad.PaddingTop = UDim.new(0,10); tabPad.PaddingBottom = UDim.new(0,30)
+	tabList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() tabScroller.CanvasSize = UDim2.new(0,0,0,tabList.AbsoluteContentSize.Y) end)
+
+	local pageContainer = Instance.new("Frame"); pageContainer.Name = "PageContainerFrame"; pageContainer.Size = UDim2.new(0,349,0,246)
+	pageContainer.Position = UDim2.new(0,148,0,50); pageContainer.BackgroundTransparency = 1; pageContainer.BorderSizePixel = 0; pageContainer.ZIndex = 2; pageContainer.Parent = main
+
+	if incToggle then
+		local tglCfg = cfg.ToggleButton or {}
+		local tglTheme = tglCfg.Theme or theme
+		local tglBtn = buildIconTextButton(gui, tglCfg, tglTheme)
+		tglBtn.Name = "ToggleAnchorBtn"
+		local tglSz = tglCfg.ButtonSize or tglCfg.Size or 45
+		tglBtn.Size = UDim2.fromOffset(tglSz, tglSz); tglBtn.Position = UDim2.new(0,20,0,20); tglBtn.ZIndex = 20
+		makeDraggable(tglBtn)
+		local tglFx = tglCfg.ButtonFx or Library.DefaultButtonFx
+		Library.ApplyEffects(tglBtn, tglFx)
+		if scl~=1 then Instance.new("UIScale", tglBtn).Scale = scl end
+		tglBtn.MouseButton1Click:Connect(function()
+			Library._CloseAllDropdowns()
+			main.Visible = not main.Visible
+		end)
+	end
+
+	if incExit then
+		local exitCfg = cfg.ExitButton or {}
+		local exitTheme = exitCfg.Theme or theme
+		local exitBtn = buildIconTextButton(header, exitCfg, exitTheme)
+		exitBtn.Name = "ExitButton"
+		local exitSz = exitCfg.ButtonSize or exitCfg.Size or 32
+		exitBtn.Size = UDim2.fromOffset(exitSz, exitSz)
+		local offX = exitCfg.Offset or 25
+		exitBtn.Position = UDim2.new(1, -offX - exitSz, 0.5, -exitSz/2)
+		exitBtn.ZIndex = 15
+		local exitFx = exitCfg.ButtonFx or Library.DefaultButtonFx
+		Library.ApplyEffects(exitBtn, exitFx)
+		exitBtn.MouseButton1Click:Connect(function()
+			Library._CloseAllDropdowns()
+			if incToggle then main.Visible = false else gui:Destroy() end
+		end)
+	end
+
+	return { Gui=gui, Main=main, TabScroller=tabScroller, PageContainer=pageContainer, Theme=theme, Tabs={} }
+end
+
+-- ===================== ADD TAB =====================
+function Library.AddTab(window, tabCfg)
+	assert(type(window) == "table" and window.Tabs, "AddTab: invalid window handle")
+	assert(type(tabCfg) == "table", "AddTab: tabCfg must be a table")
+	local windowTheme = window.Theme
+	local baseTheme = tabCfg.Theme or windowTheme
+
+	local function resolve(key, default)
+		return tabCfg[key] ~= nil and tabCfg[key] or baseTheme[key] ~= nil and baseTheme[key] or default
+	end
+
+	local function resolveIconSize(key, default)
+		local val = resolve(key, default)
+		if type(val) == "number" then return val, val end
+		if type(val) == "table" and #val >= 2 then return val[1], val[2] end
+		return default[1] or 16, default[2] or 16
+	end
+
+	local bgColor      = resolve("BackgroundColor", Color3.fromRGB(30, 30, 40))
+	local bgTrans      = resolve("BackgroundTransparency", 0)
+	local outlineColor = resolve("OutlineColor", Color3.fromRGB(80, 80, 120))
+	local outlineThick = resolve("OutlineThickness", 2)
+	local outlineTrans = resolve("OutlineTransparency", 0)
+	local corners      = resolve("CircularCorners", 0)
+	local texture      = resolve("Texture")
+	local texSize      = resolve("TextureSize", {45, 45})
+	local texTrans     = resolve("TextureTransparency", 0)
+	local texColor     = resolve("TextureColor", Color3.fromRGB(255,255,255))
+
+	local buttonText    = resolve("ButtonText", "Tab")
+	local textSize      = resolve("ButtonTextSize", 16)
+	local textColor     = resolve("ButtonTextColor", Color3.fromRGB(240,240,240))
+	local textFont      = resolve("ButtonTextFont", Enum.Font.SourceSans)
+	local textTrans     = resolve("ButtonTextTransparency", 0)
+	local textOutlineCol = resolve("ButtonTextOutlineColor", Color3.fromRGB(0,0,0))
+	local textOutlineThk = resolve("ButtonTextOutlineThickness", 0)
+	local textOutlineTrn = resolve("ButtonTextOutlineTransparency", 0)
+	local textOffset    = resolve("ButtonTextOffset", {0,0})
+	local textAlignment = resolve("ButtonTextAlignment", "Center")
+
+	local iconAsset    = resolve("Icon")
+	local iconW, iconH = resolveIconSize("IconSize", {16, 16})
+	local iconAlign    = resolve("IconAlignment", "Left")
+	local iconOffset   = resolve("IconOffset", {0,0})
+	local iconCircular = resolve("IconCircular", 0)
+	local iconTrans    = resolve("IconTransparency", 0)
+	local iconColor    = resolve("IconColor", Color3.fromRGB(255,255,255))
+
+	local tabBtn = Instance.new("TextButton")
+	tabBtn.Name = buttonText .. "_TabBtn"
+	tabBtn.AutoButtonColor = false
+	tabBtn.BorderSizePixel = 0
+	tabBtn.Size = UDim2.new(0, 126, 0, 35)
+	tabBtn.BackgroundColor3 = bgColor
+	tabBtn.BackgroundTransparency = bgTrans
+	tabBtn.Text = ""
+	tabBtn.ZIndex = 5
+	tabBtn.Parent = window.TabScroller
+
+	if corners > 0 then
+		Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, corners)
+	end
+	if outlineThick > 0 then
+		local stroke = Instance.new("UIStroke", tabBtn)
+		stroke.Thickness = outlineThick
+		stroke.Color = outlineColor
+		stroke.Transparency = outlineTrans
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	end
+
+	addTextureToFrame(tabBtn, texture, texSize, texTrans, texColor, corners)
+
+	local hasText = (buttonText and buttonText ~= "")
+	local hasIcon = (iconAsset ~= nil)
+	local overlap = hasIcon and hasText and iconAlign == textAlignment
+
+	if hasIcon then
+		local img = Instance.new("ImageLabel", tabBtn)
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromOffset(iconW, iconH)
+		img.Image = formatAsset(iconAsset)
+		img.ImageColor3 = iconColor
+		img.ImageTransparency = iconTrans
+		img.ZIndex = tabBtn.ZIndex + 1
+		if iconAlign == "Left" then
+			img.AnchorPoint = Vector2.new(0, 0.5)
+			img.Position = UDim2.new(0, iconOffset[1] or 0, 0.5, iconOffset[2] or 0)
+		elseif iconAlign == "Right" then
+			img.AnchorPoint = Vector2.new(1, 0.5)
+			img.Position = UDim2.new(1, -(iconOffset[1] or 0), 0.5, iconOffset[2] or 0)
+		else
+			img.AnchorPoint = Vector2.new(0.5, 0.5)
+			img.Position = UDim2.new(0.5, iconOffset[1] or 0, 0.5, iconOffset[2] or 0)
+		end
+		if iconCircular > 0 then
+			local corner = Instance.new("UICorner", img)
+			corner.CornerRadius = UDim.new(0, iconCircular)
+		end
+	end
+
+	if hasText then
+		local lbl = Instance.new("TextLabel", tabBtn)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = buttonText
+		lbl.Font = textFont
+		lbl.TextSize = textSize
+		lbl.TextColor3 = textColor
+		lbl.TextTransparency = textTrans
+		lbl.RichText = true
+		lbl.ZIndex = tabBtn.ZIndex + 1
+
+		local offsetX = textOffset[1] or 0
+		local offsetY = textOffset[2] or 0
+
+		if overlap then
+			lbl.Size = UDim2.new(1, 0, 1, 0)
+			if textAlignment == "Left" then
+				lbl.AnchorPoint = Vector2.new(0, 0.5)
+				lbl.Position = UDim2.new(0, offsetX, 0.5, offsetY)
+			elseif textAlignment == "Right" then
+				lbl.AnchorPoint = Vector2.new(1, 0.5)
+				lbl.Position = UDim2.new(1, -offsetX, 0.5, offsetY)
+			else
+				lbl.AnchorPoint = Vector2.new(0.5, 0.5)
+				lbl.Position = UDim2.new(0.5, offsetX, 0.5, offsetY)
+			end
+		else
+			if textAlignment == "Center" then
+				lbl.Size = UDim2.new(1, 0, 1, 0)
+				lbl.AnchorPoint = Vector2.new(0.5, 0.5)
+				lbl.Position = UDim2.new(0.5, offsetX, 0.5, offsetY)
+			else
+				if hasIcon then
+					local iconWidthPx = iconW + 8
+					lbl.Size = UDim2.new(1, -iconWidthPx, 1, 0)
+					if iconAlign == "Left" then
+						lbl.Position = UDim2.new(0, iconWidthPx, 0, 0)
+					elseif iconAlign == "Right" then
+						lbl.Position = UDim2.new(0, 0, 0, 0)
+					else
+						lbl.Size = UDim2.new(1, 0, 1, 0)
+						lbl.Position = UDim2.new(0, 0, 0, 0)
+					end
+				else
+					lbl.Size = UDim2.new(1, 0, 1, 0)
+					lbl.Position = UDim2.new(0, 0, 0, 0)
+				end
+				if textOffset and #textOffset >= 2 then
+					lbl.Position = lbl.Position + UDim2.fromOffset(offsetX, offsetY)
+				end
+			end
+		end
+
+		if type(textAlignment) == "string" then
+			if textAlignment == "Left" then lbl.TextXAlignment = Enum.TextXAlignment.Left
+			elseif textAlignment == "Center" then lbl.TextXAlignment = Enum.TextXAlignment.Center
+			elseif textAlignment == "Right" then lbl.TextXAlignment = Enum.TextXAlignment.Right
+			else lbl.TextXAlignment = Enum.TextXAlignment.Center end
+		elseif typeof(textAlignment) == "EnumItem" and textAlignment.EnumType == Enum.TextXAlignment then
+			lbl.TextXAlignment = textAlignment
+		else
+			lbl.TextXAlignment = Enum.TextXAlignment.Center
+		end
+
+		if textOutlineThk > 0 then
+			local stroke = Instance.new("UIStroke", lbl)
+			stroke.Thickness = textOutlineThk
+			stroke.Color = textOutlineCol
+			stroke.Transparency = textOutlineTrn
+		end
+	end
+
+	local unifiedFx = tabCfg.ButtonFx or window.ButtonFx or baseTheme.ButtonFx or Library.DefaultButtonFx
+	local selectedState = { value = false }
+
+	Library.ApplyEffects(tabBtn, unifiedFx, unifiedFx, selectedState, unifiedFx, "Highlight")
+
+	local pageFrame = Instance.new("ScrollingFrame")
+	pageFrame.Name = buttonText .. "_Page"
+	pageFrame.Size = UDim2.new(1, 0, 1, 0)
+	pageFrame.BackgroundTransparency = 1
+	pageFrame.BorderSizePixel = 0
+	pageFrame.ZIndex = 3
+	pageFrame.ScrollBarThickness = 3
+	pageFrame.ScrollBarImageColor3 = textColor
+	pageFrame.Visible = false
+	pageFrame.Parent = window.PageContainer
+
+	local list = Instance.new("UIListLayout", pageFrame)
+	list.FillDirection = Enum.FillDirection.Vertical
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Padding = UDim.new(0, 8)
+	local ep = Instance.new("UIPadding", pageFrame)
+	ep.PaddingTop = UDim.new(0, 8)
+	ep.PaddingBottom = UDim.new(0, 20)
+	list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		pageFrame.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y + ep.PaddingBottom.Offset)
+	end)
+
+	local tabHandle = { Button = tabBtn, Page = pageFrame, selectedState = selectedState, Theme = baseTheme }
+	table.insert(window.Tabs, tabHandle)
+
+	local selectionThread = nil
+
+	local function selectThisTab()
+		if tabHandle.selectedState.value then return end
+		if selectionThread then
+			task.cancel(selectionThread)
+			selectionThread = nil
+		end
+		
+		Library._CloseAllDropdowns()
+		
+		for _, t in ipairs(window.Tabs) do
+			if t ~= tabHandle then
+				if t._selectionThread then
+					task.cancel(t._selectionThread)
+					t._selectionThread = nil
+				end
+				t.Page.Visible = false
+				t.selectedState.value = false
+				local hl = HighlightRegistry[t.Button]
+				if hl and hl.Stop then hl.Stop() end
+			end
+		end
+		
+		selectionThread = task.spawn(function()
+			task.wait(0.05)
+			if selectionThread == nil then return end
+			tabHandle.Page.Visible = true
+			tabHandle.selectedState.value = true
+			local hl = HighlightRegistry[tabHandle.Button]
+			if hl and hl.Start then hl.Start() end
+			selectionThread = nil
+		end)
+		
+		tabHandle._selectionThread = selectionThread
+	end
+
+	tabBtn.MouseButton1Click:Connect(selectThisTab)
+
+	if #window.Tabs == 1 then
+		tabHandle.Page.Visible = true
+		tabHandle.selectedState.value = true
+		local hl = HighlightRegistry[tabHandle.Button]
+		if hl and hl.Start then hl.Start() end
+	end
+
+	return tabHandle
+end
+
+-- ===================== SECTION TITLE =====================
+function Library.AddSectionTitle(tabHandle, cfg)
+	assert(tabHandle and tabHandle.Page)
+	cfg = cfg or {}
+	local baseTheme = cfg.Theme or tabHandle.Theme or {}
+	local function resolve(k,d) return cfg[k]~=nil and cfg[k] or baseTheme[k]~=nil and baseTheme[k] or d end
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 40, d[2] or 40
+	end
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40)); local bgTrans = resolve("BackgroundTransparency",0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120)); local olThick = resolve("OutlineThickness",2); local olTrans = resolve("OutlineTransparency",0)
+	local tex = resolve("Texture"); local texSz = resolve("TextureSize",{45,45}); local texTrans = resolve("TextureTransparency",0); local texCol = resolve("TextureColor",Color3.fromRGB(255,255,255))
+	local corners = resolve("CircularCorners",0)
+	local text = resolve("Text",""); local textSz = resolve("TextSize",20); local textCol = resolve("TextColor",Color3.fromRGB(240,240,240))
+	local textFont = resolve("TextFont",Enum.Font.SourceSans); local textTrans = resolve("TextTransparency",0)
+	local textOlCol = resolve("TextOutlineColor",Color3.fromRGB(0,0,0)); local textOlThick = resolve("TextOutlineThickness",0); local textOlTrans = resolve("TextOutlineTransparency",0)
+	local textOff = resolve("TextOffset",{0,0}); local textAlign = resolve("TextAlignment","Left")
+	local iconAsset = resolve("Icon")
+	local iconW, iconH = resolveIconSize("IconSize",{40,40})
+	local iconAlign = resolve("IconAlignment","Left"); local iconOff = resolve("IconOffset",{0,0}); local iconCirc = resolve("IconCircular",0)
+	local iconTrans = resolve("IconTransparency",0); local iconCol = resolve("IconColor",Color3.fromRGB(255,255,255))
+
+	local frame = Instance.new("Frame"); frame.BackgroundColor3 = bgCol; frame.BackgroundTransparency = bgTrans; frame.BorderSizePixel = 0; frame.ZIndex = 3; frame.Parent = tabHandle.Page
+	if corners>0 then Instance.new("UICorner", frame).CornerRadius = UDim.new(0,corners) end
+	if olThick>0 then
+		local s = Instance.new("UIStroke", frame); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	end
+	addTextureToFrame(frame, tex, texSz, texTrans, texCol, corners)
+
+	local iconImg = nil
+	if iconAsset then
+		iconImg = Instance.new("ImageLabel", frame); iconImg.BackgroundTransparency = 1; iconImg.Size = UDim2.fromOffset(iconW, iconH)
+		iconImg.Image = formatAsset(iconAsset); iconImg.ImageColor3 = iconCol; iconImg.ImageTransparency = iconTrans; iconImg.ZIndex = 4
+		if iconAlign=="Left" then iconImg.AnchorPoint=Vector2.new(0,0.5); iconImg.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+		elseif iconAlign=="Right" then iconImg.AnchorPoint=Vector2.new(1,0.5); iconImg.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+		else iconImg.AnchorPoint=Vector2.new(0.5,0.5); iconImg.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0) end
+		if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCirc) end
+	end
+
+	local lbl = Instance.new("TextLabel", frame); lbl.BackgroundTransparency = 1; lbl.Text = text; lbl.Font = textFont; lbl.TextSize = textSz; lbl.TextColor3 = textCol; lbl.TextTransparency = textTrans; lbl.RichText = true; lbl.ZIndex = 4
+	lbl.TextXAlignment = (type(textAlign)=="string" and ({Left=Enum.TextXAlignment.Left, Center=Enum.TextXAlignment.Center, Right=Enum.TextXAlignment.Right})[textAlign]) or (typeof(textAlign)=="EnumItem" and textAlign) or Enum.TextXAlignment.Left
+	lbl.Size = UDim2.new(1,-20,0,0); lbl.Position = UDim2.new(0,10,0,0); lbl.AutomaticSize = Enum.AutomaticSize.Y; task.wait()
+	local textHeight = lbl.AbsoluteSize.Y; lbl.AutomaticSize = Enum.AutomaticSize.None; lbl.Size = UDim2.new(1,-20,0,textHeight)
+	local offX, offY = textOff[1] or 0, textOff[2] or 0
+	local hasIcon = iconImg ~= nil; local overlap = hasIcon and iconAlign==textAlign
+	if overlap then
+		lbl.Size = UDim2.new(1,-20,0,textHeight)
+		if textAlign=="Left" then lbl.AnchorPoint=Vector2.new(0,0.5); lbl.Position=UDim2.new(0,offX,0.5,offY)
+		elseif textAlign=="Right" then lbl.AnchorPoint=Vector2.new(1,0.5); lbl.Position=UDim2.new(1,-offX,0.5,offY)
+		else lbl.AnchorPoint=Vector2.new(0.5,0.5); lbl.Position=UDim2.new(0.5,offX,0.5,offY) end
+	else
+		if textAlign=="Center" then lbl.AnchorPoint=Vector2.new(0.5,0.5); lbl.Position=UDim2.new(0.5,offX,0.5,offY); lbl.Size=UDim2.new(1,-20,0,textHeight)
+		elseif hasIcon and iconAlign=="Left" then
+			local iconW = iconW + 8; lbl.AnchorPoint=Vector2.new(0,0); lbl.Position=UDim2.new(0,iconW+offX,0,offY)
+		elseif hasIcon and iconAlign=="Right" then
+			local iconW = iconW + 8; lbl.AnchorPoint=Vector2.new(1,0); lbl.Position=UDim2.new(1,-(iconW+offX),0,offY)
+		else lbl.AnchorPoint=Vector2.new(0,0); lbl.Position=UDim2.new(0,offX,0,offY) end
+	end
+	if textOlThick>0 then
+		local s = Instance.new("UIStroke", lbl); s.Thickness = textOlThick; s.Color = textOlCol; s.Transparency = textOlTrans
+	end
+	local totalHeight = textHeight
+	if hasIcon then totalHeight = math.max(textHeight, iconH) end
+	frame.Size = UDim2.new(0.95,0,0,totalHeight+8)
+	return frame
+end
+
+-- ===================== DESCRIPTION CARD =====================
+function Library.AddDescriptionCard(tabHandle, cardCfg)
+	assert(tabHandle and tabHandle.Page and type(cardCfg)=="table")
+	local baseTheme = cardCfg.Theme or tabHandle.Theme or {}
+	local function resolve(k,d) return cardCfg[k]~=nil and cardCfg[k] or baseTheme[k]~=nil and baseTheme[k] or d end
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 20, d[2] or 20
+	end
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40)); local bgTrans = resolve("BackgroundTransparency",0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120)); local olThick = resolve("OutlineThickness",2); local olTrans = resolve("OutlineTransparency",0)
+	local tex = resolve("Texture"); local texSz = resolve("TextureSize",{45,45}); local texTrans = resolve("TextureTransparency",0); local texCol = resolve("TextureColor",Color3.fromRGB(255,255,255))
+	local corners = resolve("CircularCorners",0)
+	local titleText = resolve("Text",""); local titleSz = resolve("TextSize",20); local titleCol = resolve("TextColor",Color3.fromRGB(240,240,240))
+	local titleFont = resolve("TextFont",Enum.Font.SourceSans); local titleTrans = resolve("TextTransparency",0)
+	local titleOlCol = resolve("TextOutlineColor",Color3.fromRGB(0,0,0)); local titleOlThick = resolve("TextOutlineThickness",0); local titleOlTrans = resolve("TextOutlineTransparency",0)
+	local titleOff = resolve("TextOffset",{0,0}); local titleAlign = resolve("TextAlignment","Left")
+	local iconAsset = resolve("Icon"); local iconW, iconH = resolveIconSize("IconSize",{20,20})
+	local iconAlign = resolve("IconAlignment","Left"); local iconOff = resolve("IconOffset",{0,0}); local iconCirc = resolve("IconCircular",0)
+	local iconTrans = resolve("IconTransparency",0); local iconCol = resolve("IconColor",Color3.fromRGB(255,255,255))
+	local descData = cardCfg.Description or {}
+	local descTheme = descData.Theme or baseTheme
+	local function descResolve(k,d) return descData[k]~=nil and descData[k] or descTheme[k]~=nil and descTheme[k] or d end
+	local descText = descResolve("Text","")
+	local descSz = descResolve("TextSize",14); local descCol = descResolve("TextColor",titleCol); local descFont = descResolve("TextFont",titleFont) or Enum.Font.SourceSans; descSz = descSz or 14
+	local descTrans = descResolve("TextTransparency",0)
+	local descOlCol = descResolve("TextOutlineColor",titleOlCol); local descOlThick = descResolve("TextOutlineThickness",0); local descOlTrans = descResolve("TextOutlineTransparency",0)
+	local descOff = descResolve("TextOffset",{0,0}); local descAlign = descResolve("TextAlignment","Left")
+	local function parseAlign(a) return (type(a)=="string" and ({Left=Enum.TextXAlignment.Left, Center=Enum.TextXAlignment.Center, Right=Enum.TextXAlignment.Right})[a]) or (typeof(a)=="EnumItem" and a) or Enum.TextXAlignment.Left end
+	local titleAlignEnum = parseAlign(titleAlign); local descAlignEnum = parseAlign(descAlign)
+	local descHeight = 0
+	if descText~="" then
+		local pageWidth = 349; local cardWidth = pageWidth*0.95-32
+		local textSzV = TextService:GetTextSize(descText, descSz, descFont, Vector2.new(cardWidth, math.huge))
+		descHeight = textSzV.Y + 12
+	end
+	local headerHeight = 32; local cardHeight = headerHeight + 8 + descHeight + 8
+	local cardFrame = Instance.new("Frame"); cardFrame.Size = UDim2.new(0.95,0,0,cardHeight); cardFrame.BackgroundColor3 = bgCol; cardFrame.BackgroundTransparency = bgTrans; cardFrame.BorderSizePixel = 0; cardFrame.ZIndex = 3; cardFrame.Parent = tabHandle.Page
+	if corners>0 then Instance.new("UICorner", cardFrame).CornerRadius = UDim.new(0,corners) end
+	if olThick>0 then
+		local s = Instance.new("UIStroke", cardFrame); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	end
+	addTextureToFrame(cardFrame, tex, texSz, texTrans, texCol, corners)
+	local header = Instance.new("Frame"); header.Size = UDim2.new(1,-16,0,headerHeight); header.Position = UDim2.new(0,8,0,4); header.BackgroundTransparency = 1; header.ZIndex = cardFrame.ZIndex+1; header.Parent = cardFrame
+	local iconImg = nil
+	if iconAsset then
+		iconImg = Instance.new("ImageLabel", header); iconImg.BackgroundTransparency = 1; iconImg.Size = UDim2.fromOffset(iconW, iconH)
+		iconImg.Image = formatAsset(iconAsset); iconImg.ImageColor3 = iconCol; iconImg.ImageTransparency = iconTrans; iconImg.ZIndex = header.ZIndex+1
+		if iconAlign=="Left" then iconImg.AnchorPoint=Vector2.new(0,0.5); iconImg.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+		elseif iconAlign=="Right" then iconImg.AnchorPoint=Vector2.new(1,0.5); iconImg.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+		else iconImg.AnchorPoint=Vector2.new(0.5,0.5); iconImg.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0) end
+		if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCirc) end
+	end
+	local titleLabel = Instance.new("TextLabel", header); titleLabel.BackgroundTransparency = 1; titleLabel.Text = titleText; titleLabel.Font = titleFont; titleLabel.TextSize = titleSz; titleLabel.TextColor3 = titleCol; titleLabel.TextTransparency = titleTrans; titleLabel.RichText = true; titleLabel.ZIndex = header.ZIndex+1; titleLabel.TextXAlignment = titleAlignEnum
+	local offX, offY = titleOff[1] or 0, titleOff[2] or 0; local hasIcon = iconImg~=nil; local overlap = hasIcon and iconAlign==titleAlign
+	if overlap then
+		titleLabel.Size = UDim2.new(1,0,1,0)
+		if titleAlign=="Left" then titleLabel.AnchorPoint=Vector2.new(0,0.5); titleLabel.Position=UDim2.new(0,offX,0.5,offY)
+		elseif titleAlign=="Right" then titleLabel.AnchorPoint=Vector2.new(1,0.5); titleLabel.Position=UDim2.new(1,-offX,0.5,offY)
+		else titleLabel.AnchorPoint=Vector2.new(0.5,0.5); titleLabel.Position=UDim2.new(0.5,offX,0.5,offY) end
+	else
+		if titleAlign=="Center" then titleLabel.Size=UDim2.new(1,0,1,0); titleLabel.AnchorPoint=Vector2.new(0.5,0.5); titleLabel.Position=UDim2.new(0.5,offX,0.5,offY)
+		elseif hasIcon and iconAlign=="Left" then
+			local iconW = iconW + 8; titleLabel.Size=UDim2.new(1,-iconW,1,0); titleLabel.AnchorPoint=Vector2.new(0,0.5); titleLabel.Position=UDim2.new(0,iconW+offX,0.5,offY)
+		elseif hasIcon and iconAlign=="Right" then
+			local iconW = iconW + 8; titleLabel.Size=UDim2.new(1,-iconW,1,0); titleLabel.AnchorPoint=Vector2.new(1,0.5); titleLabel.Position=UDim2.new(1,-(iconW+offX),0.5,offY)
+		else titleLabel.Size=UDim2.new(1,0,1,0); titleLabel.AnchorPoint=Vector2.new(0,0.5); titleLabel.Position=UDim2.new(0,offX,0.5,offY) end
+	end
+	if titleOlThick>0 then
+		local s = Instance.new("UIStroke", titleLabel); s.Thickness = titleOlThick; s.Color = titleOlCol; s.Transparency = titleOlTrans
+	end
+	if descText~="" then
+		local descLabel = Instance.new("TextLabel", cardFrame); descLabel.BackgroundTransparency = 1; descLabel.Text = descText; descLabel.Font = descFont; descLabel.TextSize = descSz; descLabel.TextColor3 = descCol; descLabel.TextTransparency = descTrans; descLabel.RichText = true; descLabel.TextWrapped = true; descLabel.ZIndex = cardFrame.ZIndex+1; descLabel.TextXAlignment = descAlignEnum
+		descLabel.Size = UDim2.new(1,-32,0,descHeight); descLabel.Position = UDim2.new(0,16,0,headerHeight+8)
+		if descOff and #descOff>=2 then descLabel.Position = descLabel.Position + UDim2.fromOffset(descOff[1] or 0, descOff[2] or 0) end
+		if descOlThick>0 then
+			local s = Instance.new("UIStroke", descLabel); s.Thickness = descOlThick; s.Color = descOlCol; s.Transparency = descOlTrans
+		end
+	end
+	return {Frame=cardFrame, Theme=baseTheme, CardType=cardCfg.CardType or 1}
+end
+
+-- ===================== BUTTON CARD =====================
+function Library.AddButtonCard(tabHandle, cardCfg)
+	assert(tabHandle and tabHandle.Page and type(cardCfg)=="table")
+	local baseTheme = cardCfg.Theme or tabHandle.Theme or {}
+	local function resolve(k,d) return cardCfg[k]~=nil and cardCfg[k] or baseTheme[k]~=nil and baseTheme[k] or d end
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 20, d[2] or 20
+	end
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40)); local bgTrans = resolve("BackgroundTransparency",0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120)); local olThick = resolve("OutlineThickness",2); local olTrans = resolve("OutlineTransparency",0)
+	local tex = resolve("Texture"); local texSz = resolve("TextureSize",{45,45}); local texTrans = resolve("TextureTransparency",0); local texCol = resolve("TextureColor",Color3.fromRGB(255,255,255))
+	local corners = resolve("CircularCorners",0)
+	local titleText = resolve("Text",""); local titleSz = resolve("TextSize",16); local titleCol = resolve("TextColor",Color3.fromRGB(240,240,240))
+	local titleFont = resolve("TextFont",Enum.Font.SourceSans); local titleTrans = resolve("TextTransparency",0)
+	local titleOlCol = resolve("TextOutlineColor",Color3.fromRGB(0,0,0)); local titleOlThick = resolve("TextOutlineThickness",0); local titleOlTrans = resolve("TextOutlineTransparency",0)
+	local titleOff = resolve("TextOffset",{0,0}); local titleAlign = resolve("TextAlignment","Left")
+	local iconAsset = resolve("Icon"); local iconW, iconH = resolveIconSize("IconSize",{20,20})
+	local iconAlign = resolve("IconAlignment","Left"); local iconOff = resolve("IconOffset",{0,0}); local iconCirc = resolve("IconCircular",0)
+	local iconTrans = resolve("IconTransparency",0); local iconCol = resolve("IconColor",Color3.fromRGB(255,255,255))
+	local cardFrame = Instance.new("Frame"); cardFrame.Size = UDim2.new(0.95,0,0,0); cardFrame.BackgroundColor3 = bgCol; cardFrame.BackgroundTransparency = bgTrans; cardFrame.BorderSizePixel = 0; cardFrame.ZIndex = 3; cardFrame.Parent = tabHandle.Page
+	if corners>0 then Instance.new("UICorner", cardFrame).CornerRadius = UDim.new(0,corners) end
+	if olThick>0 then
+		local s = Instance.new("UIStroke", cardFrame); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	end
+	addTextureToFrame(cardFrame, tex, texSz, texTrans, texCol, corners)
+	local headerHeight = 30
+	local header = Instance.new("Frame"); header.Size = UDim2.new(1,-16,0,headerHeight); header.Position = UDim2.new(0,8,0,4); header.BackgroundTransparency = 1; header.ZIndex = cardFrame.ZIndex+1; header.Parent = cardFrame
+	local iconImg = nil
+	if iconAsset then
+		iconImg = Instance.new("ImageLabel", header); iconImg.BackgroundTransparency = 1; iconImg.Size = UDim2.fromOffset(iconW, iconH)
+		iconImg.Image = formatAsset(iconAsset); iconImg.ImageColor3 = iconCol; iconImg.ImageTransparency = iconTrans; iconImg.ZIndex = header.ZIndex+1
+		if iconAlign=="Left" then iconImg.AnchorPoint=Vector2.new(0,0.5); iconImg.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+		elseif iconAlign=="Right" then iconImg.AnchorPoint=Vector2.new(1,0.5); iconImg.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+		else iconImg.AnchorPoint=Vector2.new(0.5,0.5); iconImg.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0) end
+		if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCirc) end
+	end
+	local titleLabel = Instance.new("TextLabel", header); titleLabel.BackgroundTransparency = 1; titleLabel.Text = titleText; titleLabel.Font = titleFont; titleLabel.TextSize = titleSz; titleLabel.TextColor3 = titleCol; titleLabel.TextTransparency = titleTrans; titleLabel.RichText = true; titleLabel.ZIndex = header.ZIndex+1
+	local function parseAlign(a) return (type(a)=="string" and ({Left=Enum.TextXAlignment.Left, Center=Enum.TextXAlignment.Center, Right=Enum.TextXAlignment.Right})[a]) or (typeof(a)=="EnumItem" and a) or Enum.TextXAlignment.Left end
+	titleLabel.TextXAlignment = parseAlign(titleAlign)
+	local offX, offY = titleOff[1] or 0, titleOff[2] or 0; local hasIcon = iconImg~=nil; local overlap = hasIcon and iconAlign==titleAlign
+	if overlap then
+		titleLabel.Size = UDim2.new(1,0,1,0)
+		if titleAlign=="Left" then titleLabel.AnchorPoint=Vector2.new(0,0.5); titleLabel.Position=UDim2.new(0,offX,0.5,offY)
+		elseif titleAlign=="Right" then titleLabel.AnchorPoint=Vector2.new(1,0.5); titleLabel.Position=UDim2.new(1,-offX,0.5,offY)
+		else titleLabel.AnchorPoint=Vector2.new(0.5,0.5); titleLabel.Position=UDim2.new(0.5,offX,0.5,offY) end
+	else
+		if titleAlign=="Center" then titleLabel.Size=UDim2.new(1,0,1,0); titleLabel.AnchorPoint=Vector2.new(0.5,0.5); titleLabel.Position=UDim2.new(0.5,offX,0.5,offY)
+		elseif hasIcon and iconAlign=="Left" then
+			local iconW = iconW + 8; titleLabel.Size=UDim2.new(1,-iconW,1,0); titleLabel.AnchorPoint=Vector2.new(0,0.5); titleLabel.Position=UDim2.new(0,iconW+offX,0.5,offY)
+		elseif hasIcon and iconAlign=="Right" then
+			local iconW = iconW + 8; titleLabel.Size=UDim2.new(1,-iconW,1,0); titleLabel.AnchorPoint=Vector2.new(1,0.5); titleLabel.Position=UDim2.new(1,-(iconW+offX),0.5,offY)
+		else titleLabel.Size=UDim2.new(1,0,1,0); titleLabel.AnchorPoint=Vector2.new(0,0.5); titleLabel.Position=UDim2.new(0,offX,0.5,offY) end
+	end
+	if titleOlThick>0 then
+		local s = Instance.new("UIStroke", titleLabel); s.Thickness = titleOlThick; s.Color = titleOlCol; s.Transparency = titleOlTrans
+	end
+	local scrollTop = headerHeight + 8
+	local scrollFrame = Instance.new("ScrollingFrame"); scrollFrame.Size = UDim2.new(1,-16,0,0); scrollFrame.Position = UDim2.new(0,8,0,scrollTop)
+	scrollFrame.BackgroundTransparency = 1; scrollFrame.BorderSizePixel = 0; scrollFrame.ZIndex = 4; scrollFrame.ScrollBarThickness = 3; scrollFrame.ScrollBarImageColor3 = titleCol or Color3.fromRGB(255,255,255)
+	scrollFrame.CanvasSize = UDim2.new(0,0,0,0); scrollFrame.ScrollingDirection = Enum.ScrollingDirection.X; scrollFrame.Parent = cardFrame
+	local padding = Instance.new("UIPadding", scrollFrame); padding.PaddingLeft = UDim.new(0,12); padding.PaddingTop = UDim.new(0,4); padding.PaddingBottom = UDim.new(0,4); padding.PaddingRight = UDim.new(0,20)
+	local layout = Instance.new("UIListLayout", scrollFrame); layout.FillDirection = Enum.FillDirection.Horizontal; layout.HorizontalAlignment = Enum.HorizontalAlignment.Left; layout.VerticalAlignment = Enum.VerticalAlignment.Center; layout.Padding = UDim.new(0,15)
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		scrollFrame.CanvasSize = UDim2.new(0, layout.AbsoluteContentSize.X+30, 0, layout.AbsoluteContentSize.Y+padding.PaddingTop.Offset+padding.PaddingBottom.Offset)
+	end)
+	local maxItemHeight = 0
+	local function refreshHeight()
+		local tallest = 0
+		for _, child in ipairs(scrollFrame:GetChildren()) do
+			if child:IsA("Frame") and child~=padding and child~=layout then
+				local h = child.Size.Y.Offset; if h>tallest then tallest = h end
+			end
+		end
+		if tallest==0 then tallest = 25 end
+		maxItemHeight = tallest
+		local cardHeight = headerHeight + 8 + maxItemHeight + 8
+		cardFrame.Size = UDim2.new(0.95,0,0,cardHeight)
+		scrollFrame.Size = UDim2.new(1,-16,0,maxItemHeight+8)
+	end
+	local handle = {Frame=cardFrame, ScrollFrame=scrollFrame, Layout=layout, Theme=baseTheme, RefreshHeight=refreshHeight}
+	refreshHeight()
+	return handle
+end
+
+-- ===================== REGULAR BUTTON =====================
+function Library.AddButton(parent, cfg)
+	local scrollFrame = parent.ScrollFrame or parent
+	assert(scrollFrame:IsA("ScrollingFrame"))
+	local baseTheme = cfg.Theme or parent.Theme or {}
+	local function resolve(k,d) return cfg[k]~=nil and cfg[k] or baseTheme[k]~=nil and baseTheme[k] or d end
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 16, d[2] or 16
+	end
+	local buttonW, buttonH = 60, 25
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40)); local bgTrans = resolve("BackgroundTransparency",0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120)); local olThick = resolve("OutlineThickness",2); local olTrans = resolve("OutlineTransparency",0)
+	local corners = resolve("CircularCorners",0)
+	local buttonFx = cfg.ButtonFx or baseTheme.RegularButtonFx or baseTheme.ButtonFx or Library.DefaultButtonFx
+	local callback = cfg.Callback or function() end
+	local labelText = resolve("Text",""); local labelCol = resolve("TextColor", Color3.fromRGB(240,240,240)); local labelFont = resolve("TextFont", Enum.Font.SourceSans); local labelSz = resolve("TextSize",12); local labelTrans = resolve("TextTransparency",0)
+	local labelOlCol = resolve("TextOutlineColor",Color3.fromRGB(0,0,0)); local labelOlThick = resolve("TextOutlineThickness",0); local labelOlTrans = resolve("TextOutlineTransparency",0)
+	local labelOff = resolve("TextOffset",{0,0}); local textSide = resolve("TextSide"); local textGap = resolve("TextGap",2)
+	local buttonText = resolve("ButtonText","Button"); local buttonTextCol = resolve("ButtonTextColor",labelCol); local buttonFont = resolve("ButtonTextFont",labelFont); local buttonTextSz = resolve("ButtonTextSize",labelSz); local buttonTextTrans = resolve("ButtonTextTransparency",labelTrans)
+	local iconAsset = resolve("Icon"); local iconW, iconH = resolveIconSize("IconSize",{16,16})
+	local iconAlign = resolve("IconAlignment","Left"); local iconOff = resolve("IconOffset",{0,0}); local iconCirc = resolve("IconCircular",0); local iconTrans = resolve("IconTransparency",0); local iconCol = resolve("IconColor",labelCol)
+	local showLabel = labelText~="" and textSide~=nil; local labelHeight = showLabel and (labelSz+4) or 0
+	local container = Instance.new("Frame"); container.BackgroundTransparency = 1; container.Size = UDim2.new(0,buttonW,0,0); container.ZIndex = 5; container.Parent = scrollFrame
+	local btn, labelObj = nil, nil
+	local function buildButton(parent, posY, w, h)
+		local b = Instance.new("TextButton"); b.Size = UDim2.new(0,w,0,h); b.Position = UDim2.new(0,0,0,posY or 0); b.BackgroundColor3 = bgCol; b.BackgroundTransparency = bgTrans; b.Text = buttonText; b.TextColor3 = buttonTextCol; b.TextTransparency = buttonTextTrans; b.Font = buttonFont; b.TextSize = buttonTextSz; b.AutoButtonColor = false; b.BorderSizePixel = 0; b.ZIndex = 7; b.Parent = parent
+		if corners>0 then Instance.new("UICorner", b).CornerRadius = UDim.new(0,corners) end
+		if olThick>0 then
+			local s = Instance.new("UIStroke", b); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		if iconAsset then
+			local icon = Instance.new("ImageLabel", b); icon.BackgroundTransparency = 1; icon.Size = UDim2.fromOffset(iconW, iconH)
+			icon.Image = formatAsset(iconAsset); icon.ImageColor3 = iconCol; icon.ImageTransparency = iconTrans; icon.ZIndex = 8
+			if iconAlign=="Left" then icon.AnchorPoint=Vector2.new(0,0.5); icon.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+			elseif iconAlign=="Right" then icon.AnchorPoint=Vector2.new(1,0.5); icon.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+			else icon.AnchorPoint=Vector2.new(0.5,0.5); icon.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0) end
+			if iconCirc>0 then Instance.new("UICorner", icon).CornerRadius = UDim.new(0,iconCirc) end
+		end
+		if buttonFx then Library.ApplyEffects(b, buttonFx) end
+		b.MouseButton1Click:Connect(function() callback(b) end)
+		return b
+	end
+	if not showLabel then
+		container.Size = UDim2.new(0,buttonW,0,buttonH); btn = buildButton(container, 0, buttonW, buttonH)
+	elseif textSide=="Up" then
+		local totalH = labelHeight + textGap + buttonH; container.Size = UDim2.new(0,buttonW,0,totalH)
+		labelObj = Instance.new("TextLabel", container); labelObj.BackgroundTransparency = 1; labelObj.Text = labelText; labelObj.Font = labelFont; labelObj.TextSize = labelSz; labelObj.TextColor3 = labelCol; labelObj.TextTransparency = labelTrans; labelObj.RichText = true; labelObj.ZIndex = 6; labelObj.TextXAlignment = Enum.TextXAlignment.Center; labelObj.Size = UDim2.new(1,0,0,labelHeight); labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, labelOff[2] or 0)
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj); s.Thickness = labelOlThick; s.Color = labelOlCol; s.Transparency = labelOlTrans
+		end
+		btn = buildButton(container, labelHeight + textGap, buttonW, buttonH)
+	elseif textSide=="Down" then
+		local totalH = buttonH + textGap + labelHeight; container.Size = UDim2.new(0,buttonW,0,totalH)
+		btn = buildButton(container, 0, buttonW, buttonH)
+		labelObj = Instance.new("TextLabel", container); labelObj.BackgroundTransparency = 1; labelObj.Text = labelText; labelObj.Font = labelFont; labelObj.TextSize = labelSz; labelObj.TextColor3 = labelCol; labelObj.TextTransparency = labelTrans; labelObj.RichText = true; labelObj.ZIndex = 6; labelObj.TextXAlignment = Enum.TextXAlignment.Center; labelObj.Size = UDim2.new(1,0,0,labelHeight); labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, buttonH + textGap + (labelOff[2] or 0))
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj); s.Thickness = labelOlThick; s.Color = labelOlCol; s.Transparency = labelOlTrans
+		end
+	end
+	if parent.RefreshHeight then parent.RefreshHeight() end
+	return btn
+end
+
+-- ===================== TEXT BOX =====================
+function Library.AddTextBox(parent, cfg)
+	local scrollFrame = parent.ScrollFrame or parent
+	assert(scrollFrame:IsA("ScrollingFrame"))
+	local baseTheme = cfg.Theme or parent.Theme or {}
+
+	local function resolve(k,d) 
+		return cfg[k]~=nil and cfg[k] or baseTheme[k]~=nil and baseTheme[k] or d 
+	end
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 16, d[2] or 16
+	end
+
+	local width = resolve("Width", 60)
+	local height = 25
+
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40))
+	local bgTrans = resolve("BackgroundTransparency", 0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120))
+	local olThick = resolve("OutlineThickness", 2)
+	local olTrans = resolve("OutlineTransparency", 0)
+	local tex = resolve("Texture")
+	local texSz = resolve("TextureSize", {45,45})
+	local texTrans = resolve("TextureTransparency", 0)
+	local texCol = resolve("TextureColor", Color3.fromRGB(255,255,255))
+	local corners = resolve("CircularCorners", 0)
+
+	-- Label (outside)
+	local labelText = resolve("Text", "")
+	local labelCol = resolve("TextColor", Color3.fromRGB(240,240,240))
+	local labelFont = resolve("TextFont", Enum.Font.SourceSans)
+	local labelSz = resolve("TextSize", 12)
+	local labelTrans = resolve("TextTransparency", 0)
+	local labelOlCol = resolve("TextOutlineColor", Color3.fromRGB(0,0,0))
+	local labelOlThick = resolve("TextOutlineThickness", 0)
+	local labelOlTrans = resolve("TextOutlineTransparency", 0)
+	local labelOff = resolve("TextOffset", {0,0})
+	local textSide = resolve("TextSide")
+	local textGap = resolve("TextGap", 2)
+
+	-- Placeholder / default text
+	local placeholderText = resolve("ButtonText", "Enter text...")
+	local textColor = resolve("TextColor", Color3.fromRGB(255,255,255))
+	local textFont = resolve("TextFont", Enum.Font.SourceSans)
+	local textSize = resolve("TextSize", 12)
+	local textTrans = resolve("TextTransparency", 0)
+
+	-- ========== EFFECTS ==========
+	local fx = cfg.ButtonFx or baseTheme.ButtonFx or Library.DefaultButtonFx
+	local highlightFx = cfg.HighlightFx or baseTheme.HighlightFx or fx
+	local focusSelectedState = { value = false }
+
+	local showLabel = labelText~="" and textSide~=nil
+	local labelHeight = showLabel and (labelSz+4) or 0
+	local totalHeight = (showLabel and labelHeight + textGap or 0) + height
+
+	local container = Instance.new("Frame")
+	container.BackgroundTransparency = 1
+	container.Size = UDim2.new(0, width, 0, totalHeight)
+	container.ZIndex = 5
+	container.Parent = scrollFrame
+
+	local function buildTextBox(parent, posY)
+		local frame = Instance.new("Frame")
+		frame.Size = UDim2.new(0, width, 0, height)
+		frame.Position = UDim2.new(0, 0, 0, posY or 0)
+		frame.BackgroundColor3 = bgCol
+		frame.BackgroundTransparency = bgTrans
+		frame.BorderSizePixel = 0
+		frame.ZIndex = 7
+		frame.Parent = parent
+
+		if corners>0 then
+			Instance.new("UICorner", frame).CornerRadius = UDim.new(0, corners)
+		end
+		if olThick>0 then
+			local s = Instance.new("UIStroke", frame)
+			s.Thickness = olThick
+			s.Color = olCol
+			s.Transparency = olTrans
+			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		addTextureToFrame(frame, tex, texSz, texTrans, texCol, corners)
+
+		if fx then
+			Library.ApplyEffects(frame, fx, fx, focusSelectedState, highlightFx, "TextBoxHighlight")
+		end
+
+		local box = Instance.new("TextBox")
+		box.Size = UDim2.new(1, 0, 1, 0)
+		box.Position = UDim2.new(0, 0, 0, 0)
+		box.BackgroundTransparency = 1
+		box.BorderSizePixel = 0
+		box.Text = placeholderText
+		box.TextColor3 = textColor
+		box.TextTransparency = textTrans
+		box.Font = textFont
+		box.TextSize = textSize
+		box.TextXAlignment = Enum.TextXAlignment.Left
+		box.TextYAlignment = Enum.TextYAlignment.Center
+		box.ClearTextOnFocus = false
+		box.ZIndex = 8
+		box.Parent = frame
+
+		local padding = Instance.new("UIPadding", box)
+		padding.PaddingLeft = UDim.new(0, 4)
+		padding.PaddingRight = UDim.new(0, 4)
+
+		box.Focused:Connect(function()
+			focusSelectedState.value = true
+			local hl = HighlightRegistry[frame]
+			if hl and hl.Start then hl.Start() end
+		end)
+		box.FocusLost:Connect(function()
+			focusSelectedState.value = false
+			local hl = HighlightRegistry[frame]
+			if hl and hl.Stop then hl.Stop() end
+		end)
+
+		return frame, box
+	end
+
+	local labelObj = nil
+	local frame, box = nil, nil
+
+	if not showLabel then
+		frame, box = buildTextBox(container, 0)
+	elseif textSide=="Up" then
+		labelObj = Instance.new("TextLabel", container)
+		labelObj.BackgroundTransparency = 1
+		labelObj.Text = labelText
+		labelObj.Font = labelFont
+		labelObj.TextSize = labelSz
+		labelObj.TextColor3 = labelCol
+		labelObj.TextTransparency = labelTrans
+		labelObj.RichText = true
+		labelObj.ZIndex = 6
+		labelObj.TextXAlignment = Enum.TextXAlignment.Center
+		labelObj.Size = UDim2.new(1, 0, 0, labelHeight)
+		labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, labelOff[2] or 0)
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj)
+			s.Thickness = labelOlThick
+			s.Color = labelOlCol
+			s.Transparency = labelOlTrans
+		end
+		frame, box = buildTextBox(container, labelHeight + textGap)
+	elseif textSide=="Down" then
+		frame, box = buildTextBox(container, 0)
+		labelObj = Instance.new("TextLabel", container)
+		labelObj.BackgroundTransparency = 1
+		labelObj.Text = labelText
+		labelObj.Font = labelFont
+		labelObj.TextSize = labelSz
+		labelObj.TextColor3 = labelCol
+		labelObj.TextTransparency = labelTrans
+		labelObj.RichText = true
+		labelObj.ZIndex = 6
+		labelObj.TextXAlignment = Enum.TextXAlignment.Center
+		labelObj.Size = UDim2.new(1, 0, 0, labelHeight)
+		labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, height + textGap + (labelOff[2] or 0))
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj)
+			s.Thickness = labelOlThick
+			s.Color = labelOlCol
+			s.Transparency = labelOlTrans
+		end
+	end
+
+	if parent.RefreshHeight then parent.RefreshHeight() end
+	return box
+end
+
+-- ===================== KNOB BUTTON =====================
+function Library.AddKnobButton(parent, cfg)
+	local scrollFrame = parent.ScrollFrame or parent
+	assert(scrollFrame:IsA("ScrollingFrame"))
+	local baseTheme = cfg.Theme or parent.Theme or {}
+	local function resolve(k,d) return cfg[k]~=nil and cfg[k] or baseTheme[k]~=nil and baseTheme[k] or d end
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 12, d[2] or 12
+	end
+	local width, height = 60, 25
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40)); local bgTrans = resolve("BackgroundTransparency",0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120)); local olThick = resolve("OutlineThickness",2); local olTrans = resolve("OutlineTransparency",0)
+	local corners = resolve("CircularCorners",0)
+	local knobBgCol = resolve("KnobBackgroundColor", Color3.fromRGB(255,255,255)); local knobBgTrans = resolve("KnobBackgroundTransparency",0)
+	local knobOlCol = resolve("KnobOutlineColor", Color3.fromRGB(255,255,255)); local knobOlThick = resolve("KnobOutlineThickness",1); local knobOlTrans = resolve("KnobOutlineTransparency",0)
+	local trackBgCol = resolve("KnobTrackBackgroundColor", Color3.fromRGB(80,80,100)); local trackBgTrans = resolve("KnobTrackBackgroundTransparency",0)
+	local knobCr = resolve("KnobCornerRadius",10)
+	local fx = cfg.ButtonFx or baseTheme.ButtonFx or baseTheme.KnobButtonFx or Library.DefaultButtonFx
+	local callback = cfg.Callback or function(state) end
+	local labelText = resolve("Text",""); local labelCol = resolve("TextColor", Color3.fromRGB(240,240,240)); local labelFont = resolve("TextFont", Enum.Font.SourceSans); local labelSz = resolve("TextSize",12); local labelTrans = resolve("TextTransparency",0)
+	local labelOlCol = resolve("TextOutlineColor",Color3.fromRGB(0,0,0)); local labelOlThick = resolve("TextOutlineThickness",0); local labelOlTrans = resolve("TextOutlineTransparency",0)
+	local labelOff = resolve("TextOffset",{0,0}); local textSide = resolve("TextSide"); local textGap = resolve("TextGap",2)
+	local buttonText = resolve("ButtonText",""); local buttonTextCol = resolve("ButtonTextColor",labelCol); local buttonFont = resolve("ButtonTextFont",labelFont); local buttonTextSz = resolve("ButtonTextSize",labelSz); local buttonTextTrans = resolve("ButtonTextTransparency",labelTrans)
+	local iconAsset = resolve("Icon"); local iconW, iconH = resolveIconSize("IconSize",{12,12})
+	local iconAlign = resolve("IconAlignment","Center"); local iconOff = resolve("IconOffset",{0,0}); local iconCirc = resolve("IconCircular",0); local iconTrans = resolve("IconTransparency",0); local iconCol = resolve("IconColor",Color3.fromRGB(255,255,255))
+	local icon2Asset = resolve("Icon2"); local icon2W, icon2H = resolveIconSize("IconSize2",{iconW,iconH})
+	local icon2Align = resolve("IconAlignment2",iconAlign); local icon2Off = resolve("IconOffset2",iconOff); local icon2Circ = resolve("IconCircular2",iconCirc); local icon2Trans = resolve("IconTransparency2",iconTrans); local icon2Col = resolve("IconColor2",iconCol)
+	local showLabel = labelText~="" and textSide~=nil; local labelHeight = showLabel and (labelSz+4) or 0
+	local container = Instance.new("Frame"); container.BackgroundTransparency = 1; container.Size = UDim2.new(0,width,0,0); container.ZIndex = 5; container.Parent = scrollFrame
+	local knobContainer = Instance.new("Frame", container); knobContainer.BackgroundTransparency = 1; knobContainer.Size = UDim2.new(0,width,0,height)
+	knobContainer.Position = UDim2.new(0, 0, 0, 0)
+	local labelObj, iconImg = nil, nil
+	local function buildKnob(parent, posY)
+		local knobBtn = Instance.new("TextButton", parent); knobBtn.Size = UDim2.new(0,width,0,height); knobBtn.Position = UDim2.new(0,0,0,posY or 0); knobBtn.BackgroundColor3 = bgCol; knobBtn.BackgroundTransparency = bgTrans; knobBtn.Text = buttonText; knobBtn.TextColor3 = buttonTextCol; knobBtn.TextTransparency = buttonTextTrans; knobBtn.Font = buttonFont; knobBtn.TextSize = buttonTextSz; knobBtn.AutoButtonColor = false; knobBtn.BorderSizePixel = 0; knobBtn.ZIndex = 5
+		if corners>0 then Instance.new("UICorner", knobBtn).CornerRadius = UDim.new(0,corners) end
+		if olThick>0 then
+			local s = Instance.new("UIStroke", knobBtn); s.Thickness = olThick; s.Color = olCol; s.Transparency = olTrans; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		local track = Instance.new("Frame", knobBtn); track.Name = "KnobTrack"; track.Size = UDim2.new(1,-4,1,-4); track.Position = UDim2.new(0,2,0,2); track.BackgroundColor3 = trackBgCol; track.BackgroundTransparency = trackBgTrans; track.ZIndex = 5
+		Instance.new("UICorner", track).CornerRadius = UDim.new(0,knobCr)
+		local knobSz = 20; local knob = Instance.new("Frame", track); knob.Name = "Knob"; knob.Size = UDim2.new(0,knobSz,0,knobSz); knob.Position = UDim2.new(0,2,0.5,-knobSz/2); knob.BackgroundColor3 = knobBgCol; knob.BackgroundTransparency = knobBgTrans; knob.ZIndex = 6
+		Instance.new("UICorner", knob).CornerRadius = UDim.new(0,knobCr)
+		if knobOlThick>0 then
+			local ks = Instance.new("UIStroke", knob); ks.Thickness = knobOlThick; ks.Color = knobOlCol; ks.Transparency = knobOlTrans
+		end
+		if iconAsset or icon2Asset then
+			iconImg = Instance.new("ImageLabel", knob); iconImg.BackgroundTransparency = 1; iconImg.Size = UDim2.fromOffset(iconW, iconH); iconImg.Image = formatAsset(iconAsset) or ""; iconImg.ImageColor3 = iconCol; iconImg.ImageTransparency = iconTrans; iconImg.ZIndex = 7
+			if iconAlign=="Left" then iconImg.AnchorPoint=Vector2.new(0,0.5); iconImg.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+			elseif iconAlign=="Right" then iconImg.AnchorPoint=Vector2.new(1,0.5); iconImg.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+			else iconImg.AnchorPoint=Vector2.new(0.5,0.5); iconImg.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0) end
+			if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCirc) end
+		end
+		knobBtn:SetAttribute("OriginalKnobColor", knobBgCol); knobBtn:SetAttribute("OriginalKnobOutlineColor", knobOlCol)
+		local state = false; local selectedState = {value = state}
+		if fx then
+			Library.ApplyEffects(knobBtn, fx, fx, selectedState, fx, "KnobHighlight", "KnobOn")
+		end
+		local hlFuncs = HighlightRegistry[knobBtn]
+		local function updateUI(newState)
+			state = newState; selectedState.value = state
+			local trackW = width - 4; local maxOff = trackW - knobSz - 2
+			local knobPos = state and UDim2.new(0,maxOff,0.5,-knobSz/2) or UDim2.new(0,2,0.5,-knobSz/2)
+			TweenService:Create(knob, TweenInfo.new(0.15), {Position=knobPos}):Play()
+			if iconImg then
+				if state and icon2Asset then
+					iconImg.Image = formatAsset(icon2Asset) or ""; iconImg.ImageColor3 = icon2Col; iconImg.ImageTransparency = icon2Trans; iconImg.Size = UDim2.fromOffset(icon2W, icon2H)
+					if icon2Align=="Left" then iconImg.AnchorPoint=Vector2.new(0,0.5); iconImg.Position=UDim2.new(0, icon2Off[1] or 0, 0.5, icon2Off[2] or 0)
+					elseif icon2Align=="Right" then iconImg.AnchorPoint=Vector2.new(1,0.5); iconImg.Position=UDim2.new(1, -(icon2Off[1] or 0), 0.5, icon2Off[2] or 0)
+					else iconImg.AnchorPoint=Vector2.new(0.5,0.5); iconImg.Position=UDim2.new(0.5, icon2Off[1] or 0, 0.5, icon2Off[2] or 0) end
+					local oldCorner = iconImg:FindFirstChildOfClass("UICorner"); if oldCorner then oldCorner:Destroy() end
+					if icon2Circ>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,icon2Circ) end
+				else
+					iconImg.Image = formatAsset(iconAsset) or ""; iconImg.ImageColor3 = iconCol; iconImg.ImageTransparency = iconTrans; iconImg.Size = UDim2.fromOffset(iconW, iconH)
+					if iconAlign=="Left" then iconImg.AnchorPoint=Vector2.new(0,0.5); iconImg.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+					elseif iconAlign=="Right" then iconImg.AnchorPoint=Vector2.new(1,0.5); iconImg.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+					else iconImg.AnchorPoint=Vector2.new(0.5,0.5); iconImg.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0) end
+					local oldCorner = iconImg:FindFirstChildOfClass("UICorner"); if oldCorner then oldCorner:Destroy() end
+					if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCirc) end
+				end
+			end
+			if hlFuncs then if state then hlFuncs.Start() else hlFuncs.Stop() end end
+			callback(state)
+		end
+		knobBtn.MouseButton1Click:Connect(function() updateUI(not state) end)
+		updateUI(state)
+		return knobBtn
+	end
+	if not showLabel then
+		container.Size = UDim2.new(0,width,0,height)
+		buildKnob(knobContainer, 0)
+	elseif textSide=="Up" then
+		local totalH = labelHeight + textGap + height
+		container.Size = UDim2.new(0,width,0,totalH)
+		knobContainer.Position = UDim2.new(0, 0, 0, labelHeight + textGap)
+		labelObj = Instance.new("TextLabel", container); labelObj.BackgroundTransparency = 1; labelObj.Text = labelText; labelObj.Font = labelFont; labelObj.TextSize = labelSz; labelObj.TextColor3 = labelCol; labelObj.TextTransparency = labelTrans; labelObj.RichText = true; labelObj.ZIndex = 6; labelObj.TextXAlignment = Enum.TextXAlignment.Center; labelObj.Size = UDim2.new(1,0,0,labelHeight); labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, labelOff[2] or 0)
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj); s.Thickness = labelOlThick; s.Color = labelOlCol; s.Transparency = labelOlTrans
+		end
+		buildKnob(knobContainer, 0)
+	elseif textSide=="Down" then
+		local totalH = height + textGap + labelHeight
+		container.Size = UDim2.new(0,width,0,totalH)
+		knobContainer.Position = UDim2.new(0, 0, 0, 0)
+		buildKnob(knobContainer, 0)
+		labelObj = Instance.new("TextLabel", container); labelObj.BackgroundTransparency = 1; labelObj.Text = labelText; labelObj.Font = labelFont; labelObj.TextSize = labelSz; labelObj.TextColor3 = labelCol; labelObj.TextTransparency = labelTrans; labelObj.RichText = true; labelObj.ZIndex = 6; labelObj.TextXAlignment = Enum.TextXAlignment.Center; labelObj.Size = UDim2.new(1,0,0,labelHeight); labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, height+textGap+(labelOff[2] or 0))
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj); s.Thickness = labelOlThick; s.Color = labelOlCol; s.Transparency = labelOlTrans
+		end
+	end
+	if parent.RefreshHeight then parent.RefreshHeight() end
+	return container
+end
+
+-- ===================== DROPDOWN BUTTON =====================
+function Library.AddDropdown(parent, cfg)
+	local scrollFrame = parent.ScrollFrame or parent
+	assert(scrollFrame:IsA("ScrollingFrame"))
+	local function getNextOffset(p) return p:GetAttribute("NextOffset") or -10 end
+	local function updateOffset(p, w) local cur = p:GetAttribute("NextOffset") or -10; p:SetAttribute("NextOffset", cur - (w+10)) end
+	local baseTheme = cfg.Theme or parent.Theme or {}
+	local boardCfg = cfg.PopupBoard or {}; local boardTheme = boardCfg.Theme or baseTheme
+	local buttonsCfg = cfg.PopupBoardButtons or {}; local buttonsTheme = buttonsCfg.Theme or boardTheme
+	
+	local function resolve(k,d) 
+		return cfg[k]~=nil and cfg[k] or baseTheme[k]~=nil and baseTheme[k] or d 
+	end
+	local function resolveBoard(k,d) 
+		return boardCfg[k]~=nil and boardCfg[k] or boardTheme[k]~=nil and boardTheme[k] or d 
+	end
+	local function resolveButtons(k,d) 
+		return buttonsCfg[k]~=nil and buttonsCfg[k] or buttonsTheme[k]~=nil and buttonsTheme[k] or d 
+	end
+	
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 16, d[2] or 16
+	end
+	local function resolveBoardIconSize(k,d)
+		local v = resolveBoard(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 16, d[2] or 16
+	end
+	
+	-- Main dropdown button theme
+	local buttonW = cfg.Width or 60; local buttonH = cfg.Height or 25
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40))
+	local bgTrans = resolve("BackgroundTransparency",0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120))
+	local olThick = resolve("OutlineThickness",2)
+	local olTrans = resolve("OutlineTransparency",0)
+	local tex = resolve("Texture")
+	local texSz = resolve("TextureSize",{45,45})
+	local texTrans = resolve("TextureTransparency",0)
+	local texCol = resolve("TextureColor",Color3.fromRGB(255,255,255))
+	local corners = resolve("CircularCorners",0)
+	
+	-- ========== OUTSIDE LABEL (Text) ==========
+	local labelText = resolve("Text","")
+	local labelCol = resolve("TextColor",Color3.fromRGB(240,240,240))
+	local labelFont = resolve("TextFont",Enum.Font.SourceSans)
+	local labelSz = resolve("TextSize",12)
+	local labelTrans = resolve("TextTransparency",0)
+	local labelOlCol = resolve("TextOutlineColor",Color3.fromRGB(0,0,0))
+	local labelOlThick = resolve("TextOutlineThickness",0)
+	local labelOlTrans = resolve("TextOutlineTransparency",0)
+	local labelOff = resolve("TextOffset",{0,0})
+	local textSide = resolve("TextSide")
+	local textGap = resolve("TextGap",2)
+	
+	-- ========== INSIDE TEXT (ButtonText) ==========
+	local buttonTextCol = resolve("ButtonTextColor", labelCol)
+	local buttonFont = resolve("ButtonTextFont", labelFont)
+	local buttonTextSz = resolve("ButtonTextSize", labelSz)
+	local buttonTextTrans = resolve("ButtonTextTransparency", labelTrans)
+	local buttonOlCol = resolve("ButtonTextOutlineColor", labelOlCol)
+	local buttonOlThick = resolve("ButtonTextOutlineThickness", labelOlThick)
+	local buttonOlTrans = resolve("ButtonTextOutlineTransparency", labelOlTrans)
+	local buttonTextAlignment = resolve("ButtonTextAlignment", "Center")
+	local buttonTextOffset = resolve("ButtonTextOffset", {0, 0})
+	
+	-- Icons
+	local iconAsset = resolve("Icon")
+	local iconW, iconH = resolveIconSize("IconSize",{16,16})
+	local iconAlign = resolve("IconAlignment","Left")
+	local iconOff = resolve("IconOffset",{0,0})
+	local iconCirc = resolve("IconCircular",0)
+	local iconTrans = resolve("IconTransparency",0)
+	local iconCol = resolve("IconColor",Color3.fromRGB(255,255,255))
+	local icon2Asset = resolve("Icon2")
+	local icon2W, icon2H = resolveIconSize("IconSize2",{12,12})
+	local icon2Align = resolve("IconAlignment2","Right")
+	local icon2Off = resolve("IconOffset2",{0,0})
+	local icon2Circ = resolve("IconCircular2",0)
+	local icon2Trans = resolve("IconTransparency2",0)
+	local icon2Col = resolve("IconColor2",Color3.fromRGB(255,255,255))
+	
+	-- Popup board theme
+	local boardBgCol = resolveBoard("BackgroundColor",Color3.fromRGB(30,30,40))
+	local boardBgTrans = resolveBoard("BackgroundTransparency",0)
+	local boardOlCol = resolveBoard("OutlineColor",Color3.fromRGB(80,80,120))
+	local boardOlThick = resolveBoard("OutlineThickness",2)
+	local boardOlTrans = resolveBoard("OutlineTransparency",0)
+	local boardTex = resolveBoard("Texture")
+	local boardTexSz = resolveBoard("TextureSize",{45,45})
+	local boardTexTrans = resolveBoard("TextureTransparency",0)
+	local boardTexCol = resolveBoard("TextureColor",Color3.fromRGB(255,255,255))
+	local boardCorners = resolveBoard("CircularCorners",0)
+	local boardSide = resolveBoard("BoardSide", "Left")
+	local boardTitleText = resolveBoard("Text","Select Option")
+	local boardTitleCol = resolveBoard("TextColor",Color3.fromRGB(240,240,240))
+	local boardTitleFont = resolveBoard("TextFont",Enum.Font.SourceSans)
+	local boardTitleSz = resolveBoard("TextSize",14)
+	local boardTitleTrans = resolveBoard("TextTransparency",0)
+	local boardTitleOlCol = resolveBoard("TextOutlineColor",Color3.fromRGB(0,0,0))
+	local boardTitleOlThick = resolveBoard("TextOutlineThickness",0)
+	local boardTitleOlTrans = resolveBoard("TextOutlineTransparency",0)
+	local boardTitleOff = resolveBoard("TextOffset",{0,0})
+	local boardTitleAlign = resolveBoard("TextAlignment","Center")
+	local boardIconAsset = resolveBoard("Icon")
+	local boardIconW, boardIconH = resolveBoardIconSize("IconSize",{16,16})
+	local boardIconAlign = resolveBoard("IconAlignment","Left")
+	local boardIconOff = resolveBoard("IconOffset",{0,0})
+	local boardIconCirc = resolveBoard("IconCircular",0)
+	local boardIconTrans = resolveBoard("IconTransparency",0)
+	local boardIconCol = resolveBoard("IconColor",Color3.fromRGB(255,255,255))
+	
+	-- Option buttons (PopupBoardButtons)
+	local btnBgCol = resolveButtons("BackgroundColor", Color3.fromRGB(40,40,50))
+	local btnBgTrans = resolveButtons("BackgroundTransparency", 0)
+	local btnOlCol = resolveButtons("OutlineColor", Color3.fromRGB(100,100,150))
+	local btnOlThick = resolveButtons("OutlineThickness", 1)
+	local btnOlTrans = resolveButtons("OutlineTransparency", 0)
+	local btnTex = resolveButtons("Texture")
+	local btnTexSz = resolveButtons("TextureSize",{45,45})
+	local btnTexTrans = resolveButtons("TextureTransparency",0)
+	local btnTexCol = resolveButtons("TextureColor",Color3.fromRGB(255,255,255))
+	local btnCorners = resolveButtons("CircularCorners", 4)
+	local btnTextCol = resolveButtons("TextColor", Color3.fromRGB(255,255,255))
+	local btnTextFont = resolveButtons("TextFont", Enum.Font.SourceSans)
+	local btnTextSz = resolveButtons("TextSize", 12)
+	local btnTextTrans = resolveButtons("TextTransparency", 0)
+	local btnTextOlCol = resolveButtons("TextOutlineColor", Color3.fromRGB(0,0,0))
+	local btnTextOlThick = resolveButtons("TextOutlineThickness", 0)
+	local btnTextOlTrans = resolveButtons("TextOutlineTransparency", 0)
+	local btnTextAlignment = resolveButtons("ButtonTextAlignment") or "Center"
+	local btnTextOffset = resolveButtons("ButtonTextOffset") or {0, 0}
+	
+	local options = cfg.Options or {"Option 1","Option 2","Option 3"}
+	assert(#options>0)
+	local default = cfg.Default or options[1]
+	local callback = cfg.Callback or function() end
+	local popupTitle = cfg.PopupTitle or boardTitleText or "Select Option"
+	local selectedValue = default
+	local showLabel = labelText~="" and textSide~=nil
+	local labelHeight = showLabel and (labelSz+4) or 0
+	local xOffset = getNextOffset(scrollFrame)
+	local posY = 0; local totalHeight = 0
+	if not showLabel then totalHeight = buttonH; posY = 0
+	elseif textSide=="Up" then totalHeight = labelHeight + textGap + buttonH; posY = labelHeight + textGap
+	elseif textSide=="Down" then totalHeight = buttonH + textGap + labelHeight; posY = 0 end
+	local buttonCenterOffset = posY + buttonH/2
+	local container = Instance.new("Frame")
+	container.BackgroundTransparency = 1
+	container.Size = UDim2.new(0,buttonW,0,totalHeight)
+	container.Position = UDim2.new(1, xOffset-buttonW, 0.5, -buttonCenterOffset)
+	container.ZIndex = 5
+	container.Parent = scrollFrame
+	local btn, labelObj, iconImg, arrowImg = nil, nil, nil, nil
+	local textLabel = nil
+	local popupData = {Frame=nil, Open=false, Width=0, Height=0, UserInputConnection=nil, RenderConnection=nil}
+	
+	local fx = cfg.ButtonFx or baseTheme.ButtonFx or baseTheme.DropdownButtonFx or Library.DefaultButtonFx
+	
+	local selectedState = { value = false }
+	local selectedOptionButton = nil
+	local optionButtons = {}
+	local arrowRotation = 0
+	
+	local function parseAlignment(align)
+		if type(align)=="string" then
+			if align=="Left" then return Enum.TextXAlignment.Left
+			elseif align=="Center" then return Enum.TextXAlignment.Center
+			elseif align=="Right" then return Enum.TextXAlignment.Right
+			else return Enum.TextXAlignment.Center end
+		elseif typeof(align)=="EnumItem" and align.EnumType==Enum.TextXAlignment then
+			return align
+		else return Enum.TextXAlignment.Center end
+	end
+	
+	local function buildDropdown(parent, posY)
+		local b = Instance.new("TextButton")
+		b.Size = UDim2.new(0,buttonW,0,buttonH)
+		b.Position = UDim2.new(0,0,0,posY or 0)
+		b.BackgroundColor3 = bgCol
+		b.BackgroundTransparency = bgTrans
+		b.Text = ""
+		b.AutoButtonColor = false
+		b.BorderSizePixel = 0
+		b.ZIndex = 7
+		b.Parent = parent
+		
+		local tl = Instance.new("TextLabel", b)
+		tl.BackgroundTransparency = 1
+		tl.Text = selectedValue
+		tl.TextColor3 = buttonTextCol
+		tl.TextTransparency = buttonTextTrans
+		tl.Font = buttonFont
+		tl.TextSize = buttonTextSz
+		tl.RichText = true
+		tl.ZIndex = b.ZIndex + 1
+		tl.Size = UDim2.new(1, 0, 1, 0)
+		tl.Position = UDim2.new(0, 0, 0, 0)
+		
+		tl.TextXAlignment = parseAlignment(buttonTextAlignment)
+		tl.TextYAlignment = Enum.TextYAlignment.Center
+		local offX = buttonTextOffset[1] or 0
+		local offY = buttonTextOffset[2] or 0
+		if offX ~= 0 or offY ~= 0 then
+			tl.Position = UDim2.new(0, offX, 0, offY)
+		end
+		
+		if buttonOlThick > 0 then
+			local stroke = Instance.new("UIStroke", tl)
+			stroke.Thickness = buttonOlThick
+			stroke.Color = buttonOlCol
+			stroke.Transparency = buttonOlTrans
+		end
+		
+		if corners>0 then Instance.new("UICorner", b).CornerRadius = UDim.new(0,corners) end
+		if olThick>0 then
+			local s = Instance.new("UIStroke", b)
+			s.Thickness = olThick
+			s.Color = olCol
+			s.Transparency = olTrans
+			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		addTextureToFrame(b, tex, texSz, texTrans, texCol, corners)
+		
+		if iconAsset then
+			iconImg = Instance.new("ImageLabel", b)
+			iconImg.BackgroundTransparency = 1
+			iconImg.Size = UDim2.fromOffset(iconW, iconH)
+			iconImg.Image = formatAsset(iconAsset)
+			iconImg.ImageColor3 = iconCol
+			iconImg.ImageTransparency = iconTrans
+			iconImg.ZIndex = 8
+			if iconAlign=="Left" then
+				iconImg.AnchorPoint=Vector2.new(0,0.5)
+				iconImg.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+			elseif iconAlign=="Right" then
+				iconImg.AnchorPoint=Vector2.new(1,0.5)
+				iconImg.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+			else
+				iconImg.AnchorPoint=Vector2.new(0.5,0.5)
+				iconImg.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+			end
+			if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCirc) end
+		end
+		
+		if icon2Asset then
+			arrowImg = Instance.new("ImageLabel", b)
+			arrowImg.BackgroundTransparency = 1
+			arrowImg.Size = UDim2.fromOffset(icon2W, icon2H)
+			arrowImg.Image = formatAsset(icon2Asset)
+			arrowImg.ImageColor3 = icon2Col
+			arrowImg.ImageTransparency = icon2Trans
+			arrowImg.ZIndex = 9
+			local align = icon2Align
+			local offX2 = icon2Off[1] or 0
+			local offY2 = icon2Off[2] or 0
+			if align=="Left" then
+				arrowImg.AnchorPoint=Vector2.new(0,0.5)
+				arrowImg.Position=UDim2.new(0, offX2, 0.5, offY2)
+			elseif align=="Right" then
+				arrowImg.AnchorPoint=Vector2.new(1,0.5)
+				arrowImg.Position=UDim2.new(1, -offX2, 0.5, offY2)
+			else
+				arrowImg.AnchorPoint=Vector2.new(0.5,0.5)
+				arrowImg.Position=UDim2.new(0.5, offX2, 0.5, offY2)
+			end
+			arrowImg.Rotation = 0
+			if icon2Circ>0 then Instance.new("UICorner", arrowImg).CornerRadius = UDim.new(0,icon2Circ) end
+		end
+		
+		if fx then
+			Library.ApplyEffects(b, fx, fx, selectedState, fx, "DropdownHighlight", "SelectedDropdown")
+		end
+		
+		return b, tl
+	end
+	
+	if not showLabel then
+		btn, textLabel = buildDropdown(container, 0)
+	elseif textSide=="Up" then
+		labelObj = Instance.new("TextLabel", container)
+		labelObj.BackgroundTransparency = 1
+		labelObj.Text = labelText
+		labelObj.Font = labelFont
+		labelObj.TextSize = labelSz
+		labelObj.TextColor3 = labelCol
+		labelObj.TextTransparency = labelTrans
+		labelObj.RichText = true
+		labelObj.ZIndex = 6
+		labelObj.TextXAlignment = Enum.TextXAlignment.Center
+		labelObj.Size = UDim2.new(1,0,0,labelHeight)
+		labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, labelOff[2] or 0)
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj)
+			s.Thickness = labelOlThick
+			s.Color = labelOlCol
+			s.Transparency = labelOlTrans
+		end
+		btn, textLabel = buildDropdown(container, labelHeight+textGap)
+	elseif textSide=="Down" then
+		labelObj = Instance.new("TextLabel", container)
+		labelObj.BackgroundTransparency = 1
+		labelObj.Text = labelText
+		labelObj.Font = labelFont
+		labelObj.TextSize = labelSz
+		labelObj.TextColor3 = labelCol
+		labelObj.TextTransparency = labelTrans
+		labelObj.RichText = true
+		labelObj.ZIndex = 6
+		labelObj.TextXAlignment = Enum.TextXAlignment.Center
+		labelObj.Size = UDim2.new(1,0,0,labelHeight)
+		labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, buttonH+textGap+(labelOff[2] or 0))
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj)
+			s.Thickness = labelOlThick
+			s.Color = labelOlCol
+			s.Transparency = labelOlTrans
+		end
+		btn, textLabel = buildDropdown(container, 0)
+	end
+
+	local function clearOptionHighlights()
+		for _, optBtn in ipairs(optionButtons) do
+			local hl = HighlightRegistry[optBtn]
+			if hl and hl.Stop then hl.Stop() end
+		end
+		selectedOptionButton = nil
+	end
+	
+	local function rotateArrow(targetRotation, duration)
+		if arrowImg then
+			local info = TweenInfo.new(duration or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			local tween = TweenService:Create(arrowImg, info, {Rotation = targetRotation})
+			tween:Play()
+			arrowRotation = targetRotation
+		end
+	end
+
+	local function getScreenGui()
+		if not btn then return PlayerGui end
+		return btn:FindFirstAncestorOfClass("ScreenGui") or PlayerGui
+	end
+	
+	local function positionPopup()
+		if not popupData.Frame or not btn or not btn.Parent then return end
+		local btnAbsPos, btnAbsSize
+		local ok, err = pcall(function()
+			btnAbsPos = btn.AbsolutePosition
+			btnAbsSize = btn.AbsoluteSize
+		end)
+		if not ok then return end
+		local popupW = popupData.Width or 120
+		local popupH = popupData.Height or 60
+		local screenGui = getScreenGui()
+		if not screenGui then return end
+		local screenSize = screenGui.AbsoluteSize
+		if screenSize.X==0 or screenSize.Y==0 then return end
+		local x, y
+		if boardSide=="Left" then
+			x = btnAbsPos.X - popupW - 6
+			x = math.max(0, math.min(x, screenSize.X - popupW))
+		else
+			x = btnAbsPos.X + btnAbsSize.X + 6
+			x = math.max(0, math.min(x, screenSize.X - popupW))
+		end
+		y = btnAbsPos.Y
+		y = math.max(0, math.min(y, screenSize.Y - popupH))
+		popupData.Frame.Position = UDim2.new(0,x,0,y)
+	end
+	
+	local function closePopup()
+		if not popupData.Open then return end
+		popupData.Open = false
+		
+		selectedState.value = false
+		local hl = HighlightRegistry[btn]
+		if hl and hl.Stop then hl.Stop() end
+		
+		local targetRotation = arrowRotation + 180
+		rotateArrow(targetRotation, 0.25)
+		
+		if popupData.Frame then
+			popupData.Frame:Destroy()
+			popupData.Frame = nil
+		end
+		if popupData.UserInputConnection then
+			popupData.UserInputConnection:Disconnect()
+			popupData.UserInputConnection = nil
+		end
+		if popupData.RenderConnection then
+			popupData.RenderConnection:Disconnect()
+			popupData.RenderConnection = nil
+		end
+		for i=#openDropdownClosers,1,-1 do
+			if openDropdownClosers[i]==closePopup then
+				table.remove(openDropdownClosers,i)
+			end
+		end
+		
+		clearOptionHighlights()
+	end
+	
+	local function createPopup()
+		if popupData.Frame then return end
+		local screenGui = getScreenGui()
+		local popupFrame = Instance.new("Frame")
+		popupFrame.Name = "DropdownPopup"
+		popupFrame.BackgroundColor3 = boardBgCol
+		popupFrame.BackgroundTransparency = boardBgTrans
+		popupFrame.BorderSizePixel = 0
+		popupFrame.ZIndex = 100
+		popupFrame.Active = false
+		popupFrame.Draggable = false
+		popupFrame.Parent = screenGui
+		if boardCorners>0 then
+			Instance.new("UICorner", popupFrame).CornerRadius = UDim.new(0,boardCorners)
+		end
+		if boardOlThick>0 then
+			local s = Instance.new("UIStroke", popupFrame)
+			s.Thickness = boardOlThick
+			s.Color = boardOlCol
+			s.Transparency = boardOlTrans
+			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		addTextureToFrame(popupFrame, boardTex, boardTexSz, boardTexTrans, boardTexCol, boardCorners)
+		
+		local headerHeight = 30
+		local headerFrame = Instance.new("Frame", popupFrame)
+		headerFrame.Size = UDim2.new(1,-16,0,headerHeight)
+		headerFrame.Position = UDim2.new(0,8,0,4)
+		headerFrame.BackgroundTransparency = 1
+		headerFrame.ZIndex = 101
+		
+		local boardIconImg = nil
+		local hasIcon = boardIconAsset and true or false
+		if hasIcon then
+			boardIconImg = Instance.new("ImageLabel", headerFrame)
+			boardIconImg.BackgroundTransparency = 1
+			boardIconImg.Size = UDim2.fromOffset(boardIconW, boardIconH)
+			boardIconImg.Image = formatAsset(boardIconAsset)
+			boardIconImg.ImageColor3 = boardIconCol
+			boardIconImg.ImageTransparency = boardIconTrans
+			boardIconImg.ZIndex = 102
+			local align = boardIconAlign
+			local offX = boardIconOff[1] or 0
+			local offY = boardIconOff[2] or 0
+			if align=="Left" then
+				boardIconImg.AnchorPoint=Vector2.new(0,0.5)
+				boardIconImg.Position=UDim2.new(0,offX,0.5,offY)
+			elseif align=="Right" then
+				boardIconImg.AnchorPoint=Vector2.new(1,0.5)
+				boardIconImg.Position=UDim2.new(1,-offX,0.5,offY)
+			else
+				boardIconImg.AnchorPoint=Vector2.new(0.5,0.5)
+				boardIconImg.Position=UDim2.new(0.5,offX,0.5,offY)
+			end
+			if boardIconCirc>0 then
+				Instance.new("UICorner", boardIconImg).CornerRadius = UDim.new(0,boardIconCirc)
+			end
+		end
+		
+		local titleLabel = Instance.new("TextLabel", headerFrame)
+		titleLabel.BackgroundTransparency = 1
+		titleLabel.Text = popupTitle
+		titleLabel.Font = boardTitleFont
+		titleLabel.TextSize = boardTitleSz
+		titleLabel.TextColor3 = boardTitleCol
+		titleLabel.TextTransparency = boardTitleTrans
+		titleLabel.RichText = true
+		titleLabel.ZIndex = 103
+		local textAlign = boardTitleAlign
+		local textAlignEnum = (textAlign=="Left" and Enum.TextXAlignment.Left) or (textAlign=="Right" and Enum.TextXAlignment.Right) or Enum.TextXAlignment.Center
+		titleLabel.TextXAlignment = textAlignEnum
+		titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+		local overlap = hasIcon and boardIconAlign==textAlign
+		local offX = boardTitleOff[1] or 0
+		local offY = boardTitleOff[2] or 0
+		if overlap then
+			titleLabel.Size = UDim2.new(1,0,1,0)
+			if textAlign=="Left" then
+				titleLabel.AnchorPoint=Vector2.new(0,0.5)
+				titleLabel.Position=UDim2.new(0,offX,0.5,offY)
+			elseif textAlign=="Right" then
+				titleLabel.AnchorPoint=Vector2.new(1,0.5)
+				titleLabel.Position=UDim2.new(1,-offX,0.5,offY)
+			else
+				titleLabel.AnchorPoint=Vector2.new(0.5,0.5)
+				titleLabel.Position=UDim2.new(0.5,offX,0.5,offY)
+			end
+		else
+			titleLabel.Size = UDim2.new(1,0,1,0)
+			if textAlign=="Left" then
+				titleLabel.AnchorPoint=Vector2.new(0,0.5)
+				titleLabel.Position=UDim2.new(0,offX,0.5,offY)
+			elseif textAlign=="Right" then
+				titleLabel.AnchorPoint=Vector2.new(1,0.5)
+				titleLabel.Position=UDim2.new(1,-offX,0.5,offY)
+			else
+				titleLabel.AnchorPoint=Vector2.new(0.5,0.5)
+				titleLabel.Position=UDim2.new(0.5,offX,0.5,offY)
+			end
+		end
+		if boardTitleOlThick>0 then
+			local s = Instance.new("UIStroke", titleLabel)
+			s.Thickness = boardTitleOlThick
+			s.Color = boardTitleOlCol
+			s.Transparency = boardTitleOlTrans
+		end
+		
+		local maxPerColumn = 5
+		local cellW = 54
+		local cellH = 22
+		local cellPadding = 4
+		local gridPadding = 5
+		local columns = math.ceil(#options / maxPerColumn)
+		local rows = math.min(#options, maxPerColumn)
+		local contentW = columns*(cellW+cellPadding)-cellPadding + gridPadding*2
+		local contentH = rows*(cellH+cellPadding)-cellPadding + gridPadding*2
+		
+		local optionsScroll = Instance.new("ScrollingFrame", popupFrame)
+		optionsScroll.Size = UDim2.new(0,contentW,0,contentH)
+		optionsScroll.Position = UDim2.new(0,8,0,headerHeight+8)
+		optionsScroll.BackgroundTransparency = 1
+		optionsScroll.BorderSizePixel = 0
+		optionsScroll.ZIndex = 104
+		optionsScroll.ScrollBarThickness = 3
+		optionsScroll.ScrollBarImageColor3 = boardTitleCol or Color3.fromRGB(255,255,255)
+		optionsScroll.CanvasSize = UDim2.new(0,contentW,0,contentH)
+		optionsScroll.ClipsDescendants = true
+		
+		local gridLayout = Instance.new("UIGridLayout", optionsScroll)
+		gridLayout.FillDirection = Enum.FillDirection.Vertical
+		gridLayout.FillDirectionMaxCells = maxPerColumn
+		gridLayout.CellSize = UDim2.new(0,cellW,0,cellH)
+		gridLayout.CellPadding = UDim2.new(0,cellPadding,0,cellPadding)
+		gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		
+		local gridPad = Instance.new("UIPadding", optionsScroll)
+		gridPad.PaddingTop = UDim.new(0,gridPadding)
+		gridPad.PaddingBottom = UDim.new(0,gridPadding)
+		gridPad.PaddingLeft = UDim.new(0,gridPadding)
+		gridPad.PaddingRight = UDim.new(0,gridPadding)
+		
+		optionButtons = {}
+		
+		for i, opt in ipairs(options) do
+			local optBtn = Instance.new("TextButton", optionsScroll)
+			optBtn.Size = UDim2.new(1,0,1,0)
+			optBtn.BackgroundColor3 = btnBgCol
+			optBtn.BackgroundTransparency = btnBgTrans
+			optBtn.Text = opt
+			optBtn.TextColor3 = btnTextCol
+			optBtn.TextTransparency = btnTextTrans
+			optBtn.Font = btnTextFont
+			optBtn.TextSize = btnTextSz
+			optBtn.AutoButtonColor = false
+			optBtn.BorderSizePixel = 0
+			optBtn.ZIndex = 105
+			
+			optBtn.TextXAlignment = parseAlignment(btnTextAlignment)
+			optBtn.TextYAlignment = Enum.TextYAlignment.Center
+			
+			if btnTextOffset and #btnTextOffset >= 2 then
+				local offX = btnTextOffset[1] or 0
+				local offY = btnTextOffset[2] or 0
+				if offX ~= 0 or offY ~= 0 then
+					local pad = Instance.new("UIPadding", optBtn)
+					if offX ~= 0 then
+						pad.PaddingLeft = UDim.new(0, offX)
+						pad.PaddingRight = UDim.new(0, -offX)
+					end
+					if offY ~= 0 then
+						pad.PaddingTop = UDim.new(0, offY)
+						pad.PaddingBottom = UDim.new(0, -offY)
+					end
+				end
+			end
+			
+			if btnCorners>0 then
+				Instance.new("UICorner", optBtn).CornerRadius = UDim.new(0,math.min(4,btnCorners))
+			end
+			if btnOlThick>0 then
+				local s = Instance.new("UIStroke", optBtn)
+				s.Thickness = btnOlThick
+				s.Color = btnOlCol
+				s.Transparency = btnOlTrans
+				s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			end
+			if btnTex then
+				addTextureToFrame(optBtn, btnTex, btnTexSz, btnTexTrans, btnTexCol, btnCorners)
+			end
+			
+			local isSelected = (opt == selectedValue)
+			local optionSelectedState = { value = isSelected }
+			
+			if fx then
+				Library.ApplyEffects(optBtn, fx, fx, optionSelectedState, fx, "OptionHighlight", "SelectedOption")
+			end
+			
+			table.insert(optionButtons, optBtn)
+			
+			if isSelected then
+				local hl = HighlightRegistry[optBtn]
+				if hl and hl.Start then hl.Start() end
+				selectedOptionButton = optBtn
+			end
+			
+			optBtn.MouseButton1Click:Connect(function()
+				if selectedOptionButton then
+					local prevHl = HighlightRegistry[selectedOptionButton]
+					if prevHl and prevHl.Stop then prevHl.Stop() end
+				end
+				
+				selectedValue = opt
+				if textLabel then
+					textLabel.Text = opt
+				end
+				
+				optionSelectedState.value = true
+				local hl = HighlightRegistry[optBtn]
+				if hl and hl.Start then hl.Start() end
+				selectedOptionButton = optBtn
+				
+				if callback then callback(opt) end
+				closePopup()
+			end)
+		end
+		
+		local popupW = contentW + 16
+		local popupH = headerHeight + 8 + contentH + 8
+		popupFrame.Size = UDim2.new(0,popupW,0,popupH)
+		popupData.Frame = popupFrame
+		popupData.Width = popupW
+		popupData.Height = popupH
+		
+		local function onInputBegan(input, gameProcessed)
+			if gameProcessed then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				local pos = input.Position
+				if not popupData.Frame or not popupData.Frame.Parent then return end
+				local absPos = popupData.Frame.AbsolutePosition
+				local absSize = popupData.Frame.AbsoluteSize
+				local inside = pos.X>=absPos.X and pos.X<=absPos.X+absSize.X and pos.Y>=absPos.Y and pos.Y<=absPos.Y+absSize.Y
+				local onButton = false
+				if btn and btn.Parent then
+					local btnAbsPos = btn.AbsolutePosition
+					local btnAbsSize = btn.AbsoluteSize
+					onButton = pos.X>=btnAbsPos.X and pos.X<=btnAbsPos.X+btnAbsSize.X and pos.Y>=btnAbsPos.Y and pos.Y<=btnAbsPos.Y+btnAbsSize.Y
+				end
+				if not inside and not onButton then closePopup() end
+			end
+		end
+		
+		popupData.UserInputConnection = UserInputService.InputBegan:Connect(onInputBegan)
+		local renderConn = RunService.RenderStepped:Connect(function()
+			if popupData.Open and popupData.Frame then positionPopup() end
+		end)
+		popupData.RenderConnection = renderConn
+		table.insert(openDropdownClosers, closePopup)
+	end
+	
+	local function openPopup()
+		if popupData.Open then return end
+		
+		selectedState.value = true
+		local hl = HighlightRegistry[btn]
+		if hl and hl.Start then hl.Start() end
+		
+		local targetRotation = arrowRotation + 180
+		rotateArrow(targetRotation, 0.25)
+		
+		if not popupData.Frame then createPopup() end
+		popupData.Open = true
+		if popupData.Frame then
+			popupData.Frame.Visible = true
+			positionPopup()
+		end
+	end
+	
+	local function togglePopup()
+		if popupData.Open then
+			closePopup()
+		else
+			Library._CloseAllDropdowns()
+			openPopup()
+		end
+	end
+	
+	if btn then
+		btn.MouseButton1Click:Connect(togglePopup)
+	end
+	
+	updateOffset(scrollFrame, buttonW)
+	if parent.RefreshHeight then parent.RefreshHeight() end
+	return btn
+end
+
+-- ===================== MULTI-DROPDOWN =====================
+function Library.AddMultiDropdown(parent, cfg)
+	local scrollFrame = parent.ScrollFrame or parent
+	assert(scrollFrame:IsA("ScrollingFrame"))
+	local function getNextOffset(p) return p:GetAttribute("NextOffset") or -10 end
+	local function updateOffset(p, w) local cur = p:GetAttribute("NextOffset") or -10; p:SetAttribute("NextOffset", cur - (w+10)) end
+	local baseTheme = cfg.Theme or parent.Theme or {}
+	local boardCfg = cfg.PopupBoard or {}; local boardTheme = boardCfg.Theme or baseTheme
+	local buttonsCfg = cfg.PopupBoardButtons or {}; local buttonsTheme = buttonsCfg.Theme or boardTheme
+
+	local function resolve(k,d) 
+		return cfg[k]~=nil and cfg[k] or baseTheme[k]~=nil and baseTheme[k] or d 
+	end
+	local function resolveBoard(k,d) 
+		return boardCfg[k]~=nil and boardCfg[k] or boardTheme[k]~=nil and boardTheme[k] or d 
+	end
+	local function resolveButtons(k,d) 
+		return buttonsCfg[k]~=nil and buttonsCfg[k] or buttonsTheme[k]~=nil and buttonsTheme[k] or d 
+	end
+
+	local function resolveIconSize(k,d)
+		local v = resolve(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 16, d[2] or 16
+	end
+	local function resolveBoardIconSize(k,d)
+		local v = resolveBoard(k,d); if type(v)=="number" then return v,v end; if type(v)=="table" and #v>=2 then return v[1],v[2] end; return d[1] or 16, d[2] or 16
+	end
+
+	-- Main button theme
+	local buttonW = cfg.Width or 60; local buttonH = cfg.Height or 25
+	local bgCol = resolve("BackgroundColor", Color3.fromRGB(30,30,40))
+	local bgTrans = resolve("BackgroundTransparency",0)
+	local olCol = resolve("OutlineColor", Color3.fromRGB(80,80,120))
+	local olThick = resolve("OutlineThickness",2)
+	local olTrans = resolve("OutlineTransparency",0)
+	local tex = resolve("Texture")
+	local texSz = resolve("TextureSize",{45,45})
+	local texTrans = resolve("TextureTransparency",0)
+	local texCol = resolve("TextureColor",Color3.fromRGB(255,255,255))
+	local corners = resolve("CircularCorners",0)
+
+	-- Label (outside)
+	local labelText = resolve("Text","")
+	local labelCol = resolve("TextColor",Color3.fromRGB(240,240,240))
+	local labelFont = resolve("TextFont",Enum.Font.SourceSans)
+	local labelSz = resolve("TextSize",12)
+	local labelTrans = resolve("TextTransparency",0)
+	local labelOlCol = resolve("TextOutlineColor",Color3.fromRGB(0,0,0))
+	local labelOlThick = resolve("TextOutlineThickness",0)
+	local labelOlTrans = resolve("TextOutlineTransparency",0)
+	local labelOff = resolve("TextOffset",{0,0})
+	local textSide = resolve("TextSide")
+	local textGap = resolve("TextGap",2)
+
+	-- Inside text (ButtonText)
+	local buttonTextCol = resolve("ButtonTextColor", labelCol)
+	local buttonFont = resolve("ButtonTextFont", labelFont)
+	local buttonTextSz = resolve("ButtonTextSize", labelSz)
+	local buttonTextTrans = resolve("ButtonTextTransparency", labelTrans)
+	local buttonOlCol = resolve("ButtonTextOutlineColor", labelOlCol)
+	local buttonOlThick = resolve("ButtonTextOutlineThickness", labelOlThick)
+	local buttonOlTrans = resolve("ButtonTextOutlineTransparency", labelOlTrans)
+	local buttonTextAlignment = resolve("ButtonTextAlignment", "Center")
+	local buttonTextOffset = resolve("ButtonTextOffset", {0, 0})
+
+	-- Icons
+	local iconAsset = resolve("Icon")
+	local iconW, iconH = resolveIconSize("IconSize",{16,16})
+	local iconAlign = resolve("IconAlignment","Left")
+	local iconOff = resolve("IconOffset",{0,0})
+	local iconCirc = resolve("IconCircular",0)
+	local iconTrans = resolve("IconTransparency",0)
+	local iconCol = resolve("IconColor",Color3.fromRGB(255,255,255))
+	local icon2Asset = resolve("Icon2")
+	local icon2W, icon2H = resolveIconSize("IconSize2",{12,12})
+	local icon2Align = resolve("IconAlignment2","Right")
+	local icon2Off = resolve("IconOffset2",{0,0})
+	local icon2Circ = resolve("IconCircular2",0)
+	local icon2Trans = resolve("IconTransparency2",0)
+	local icon2Col = resolve("IconColor2",Color3.fromRGB(255,255,255))
+
+	-- Popup board theme
+	local boardBgCol = resolveBoard("BackgroundColor",Color3.fromRGB(30,30,40))
+	local boardBgTrans = resolveBoard("BackgroundTransparency",0)
+	local boardOlCol = resolveBoard("OutlineColor",Color3.fromRGB(80,80,120))
+	local boardOlThick = resolveBoard("OutlineThickness",2)
+	local boardOlTrans = resolveBoard("OutlineTransparency",0)
+	local boardTex = resolveBoard("Texture")
+	local boardTexSz = resolveBoard("TextureSize",{45,45})
+	local boardTexTrans = resolveBoard("TextureTransparency",0)
+	local boardTexCol = resolveBoard("TextureColor",Color3.fromRGB(255,255,255))
+	local boardCorners = resolveBoard("CircularCorners",0)
+	local boardSide = resolveBoard("BoardSide", "Left")
+	local boardTitleText = resolveBoard("Text","Select Option")
+	local boardTitleCol = resolveBoard("TextColor",Color3.fromRGB(240,240,240))
+	local boardTitleFont = resolveBoard("TextFont",Enum.Font.SourceSans)
+	local boardTitleSz = resolveBoard("TextSize",14)
+	local boardTitleTrans = resolveBoard("TextTransparency",0)
+	local boardTitleOlCol = resolveBoard("TextOutlineColor",Color3.fromRGB(0,0,0))
+	local boardTitleOlThick = resolveBoard("TextOutlineThickness",0)
+	local boardTitleOlTrans = resolveBoard("TextOutlineTransparency",0)
+	local boardTitleOff = resolveBoard("TextOffset",{0,0})
+	local boardTitleAlign = resolveBoard("TextAlignment","Center")
+	local boardIconAsset = resolveBoard("Icon")
+	local boardIconW, boardIconH = resolveBoardIconSize("IconSize",{16,16})
+	local boardIconAlign = resolveBoard("IconAlignment","Left")
+	local boardIconOff = resolveBoard("IconOffset",{0,0})
+	local boardIconCirc = resolveBoard("IconCircular",0)
+	local boardIconTrans = resolveBoard("IconTransparency",0)
+	local boardIconCol = resolveBoard("IconColor",Color3.fromRGB(255,255,255))
+
+	-- Option buttons theme
+	local btnBgCol = resolveButtons("BackgroundColor", Color3.fromRGB(40,40,50))
+	local btnBgTrans = resolveButtons("BackgroundTransparency", 0)
+	local btnOlCol = resolveButtons("OutlineColor", Color3.fromRGB(100,100,150))
+	local btnOlThick = resolveButtons("OutlineThickness", 1)
+	local btnOlTrans = resolveButtons("OutlineTransparency", 0)
+	local btnTex = resolveButtons("Texture")
+	local btnTexSz = resolveButtons("TextureSize",{45,45})
+	local btnTexTrans = resolveButtons("TextureTransparency",0)
+	local btnTexCol = resolveButtons("TextureColor",Color3.fromRGB(255,255,255))
+	local btnCorners = resolveButtons("CircularCorners", 4)
+	local btnTextCol = resolveButtons("TextColor", Color3.fromRGB(255,255,255))
+	local btnTextFont = resolveButtons("TextFont", Enum.Font.SourceSans)
+	local btnTextSz = resolveButtons("TextSize", 12)
+	local btnTextTrans = resolveButtons("TextTransparency", 0)
+	local btnTextOlCol = resolveButtons("TextOutlineColor", Color3.fromRGB(0,0,0))
+	local btnTextOlThick = resolveButtons("TextOutlineThickness", 0)
+	local btnTextOlTrans = resolveButtons("TextOutlineTransparency", 0)
+	local btnTextAlignment = resolveButtons("ButtonTextAlignment") or "Center"
+	local btnTextOffset = resolveButtons("ButtonTextOffset") or {0, 0}
+
+	local fx = cfg.ButtonFx or baseTheme.ButtonFx or Library.DefaultButtonFx
+
+	local options = cfg.Options or {"Option 1","Option 2","Option 3"}
+	assert(#options>0)
+
+	local defaultSelected = cfg.Default or {}
+	if type(defaultSelected) ~= "table" then defaultSelected = {defaultSelected} end
+	local selectedMap = {}
+	for _, opt in ipairs(options) do
+		selectedMap[opt] = false
+	end
+	for _, opt in ipairs(defaultSelected) do
+		if selectedMap[opt] ~= nil then selectedMap[opt] = true end
+	end
+
+	local callback = cfg.Callback or function() end
+	local popupTitle = cfg.PopupTitle or boardTitleText or "Select Options"
+
+	local showLabel = labelText~="" and textSide~=nil
+	local labelHeight = showLabel and (labelSz+4) or 0
+	local xOffset = getNextOffset(scrollFrame)
+	local posY = 0; local totalHeight = 0
+	if not showLabel then totalHeight = buttonH; posY = 0
+	elseif textSide=="Up" then totalHeight = labelHeight + textGap + buttonH; posY = labelHeight + textGap
+	elseif textSide=="Down" then totalHeight = buttonH + textGap + labelHeight; posY = 0 end
+	local buttonCenterOffset = posY + buttonH/2
+	local container = Instance.new("Frame")
+	container.BackgroundTransparency = 1
+	container.Size = UDim2.new(0,buttonW,0,totalHeight)
+	container.Position = UDim2.new(1, xOffset-buttonW, 0.5, -buttonCenterOffset)
+	container.ZIndex = 5
+	container.Parent = scrollFrame
+	local btn, labelObj, iconImg, arrowImg = nil, nil, nil, nil
+	local textLabel = nil
+	local popupData = {Frame=nil, Open=false, Width=0, Height=0, UserInputConnection=nil, RenderConnection=nil}
+
+	local optionButtons = {}
+	local arrowRotation = 0
+	local allButton = nil
+	local allSelected = false
+
+	-- Selected state for the main button (open/closed)
+	local mainSelectedState = { value = false }
+
+	local function updateMainButtonText()
+		local selected = {}
+		for opt, sel in pairs(selectedMap) do
+			if sel then table.insert(selected, opt) end
+		end
+		local count = #selected
+		if count == 0 then
+			textLabel.Text = "None"
+		else
+			textLabel.Text = "(" .. count .. ") Selected"
+		end
+	end
+
+	local function parseAlignment(align)
+		if type(align)=="string" then
+			if align=="Left" then return Enum.TextXAlignment.Left
+			elseif align=="Center" then return Enum.TextXAlignment.Center
+			elseif align=="Right" then return Enum.TextXAlignment.Right
+			else return Enum.TextXAlignment.Center end
+		elseif typeof(align)=="EnumItem" and align.EnumType==Enum.TextXAlignment then
+			return align
+		else return Enum.TextXAlignment.Center end
+	end
+
+	local function buildDropdown(parent, posY)
+		local b = Instance.new("TextButton")
+		b.Size = UDim2.new(0,buttonW,0,buttonH)
+		b.Position = UDim2.new(0,0,0,posY or 0)
+		b.BackgroundColor3 = bgCol
+		b.BackgroundTransparency = bgTrans
+		b.Text = ""
+		b.AutoButtonColor = false
+		b.BorderSizePixel = 0
+		b.ZIndex = 7
+		b.Parent = parent
+
+		local tl = Instance.new("TextLabel", b)
+		tl.BackgroundTransparency = 1
+		tl.Text = "None"
+		tl.TextColor3 = buttonTextCol
+		tl.TextTransparency = buttonTextTrans
+		tl.Font = buttonFont
+		tl.TextSize = buttonTextSz
+		tl.RichText = true
+		tl.ZIndex = b.ZIndex + 1
+		tl.Size = UDim2.new(1, 0, 1, 0)
+		tl.Position = UDim2.new(0, 0, 0, 0)
+
+		tl.TextXAlignment = parseAlignment(buttonTextAlignment)
+		tl.TextYAlignment = Enum.TextYAlignment.Center
+		local offX = buttonTextOffset[1] or 0
+		local offY = buttonTextOffset[2] or 0
+		if offX ~= 0 or offY ~= 0 then
+			tl.Position = UDim2.new(0, offX, 0, offY)
+		end
+
+		if buttonOlThick > 0 then
+			local stroke = Instance.new("UIStroke", tl)
+			stroke.Thickness = buttonOlThick
+			stroke.Color = buttonOlCol
+			stroke.Transparency = buttonOlTrans
+		end
+
+		if corners>0 then Instance.new("UICorner", b).CornerRadius = UDim.new(0,corners) end
+		if olThick>0 then
+			local s = Instance.new("UIStroke", b)
+			s.Thickness = olThick
+			s.Color = olCol
+			s.Transparency = olTrans
+			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		addTextureToFrame(b, tex, texSz, texTrans, texCol, corners)
+
+		if iconAsset then
+			iconImg = Instance.new("ImageLabel", b)
+			iconImg.BackgroundTransparency = 1
+			iconImg.Size = UDim2.fromOffset(iconW, iconH)
+			iconImg.Image = formatAsset(iconAsset)
+			iconImg.ImageColor3 = iconCol
+			iconImg.ImageTransparency = iconTrans
+			iconImg.ZIndex = 8
+			if iconAlign=="Left" then
+				iconImg.AnchorPoint=Vector2.new(0,0.5)
+				iconImg.Position=UDim2.new(0, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+			elseif iconAlign=="Right" then
+				iconImg.AnchorPoint=Vector2.new(1,0.5)
+				iconImg.Position=UDim2.new(1, -(iconOff[1] or 0), 0.5, iconOff[2] or 0)
+			else
+				iconImg.AnchorPoint=Vector2.new(0.5,0.5)
+				iconImg.Position=UDim2.new(0.5, iconOff[1] or 0, 0.5, iconOff[2] or 0)
+			end
+			if iconCirc>0 then Instance.new("UICorner", iconImg).CornerRadius = UDim.new(0,iconCirc) end
+		end
+
+		if icon2Asset then
+			arrowImg = Instance.new("ImageLabel", b)
+			arrowImg.BackgroundTransparency = 1
+			arrowImg.Size = UDim2.fromOffset(icon2W, icon2H)
+			arrowImg.Image = formatAsset(icon2Asset)
+			arrowImg.ImageColor3 = icon2Col
+			arrowImg.ImageTransparency = icon2Trans
+			arrowImg.ZIndex = 9
+			local align = icon2Align
+			local offX2 = icon2Off[1] or 0
+			local offY2 = icon2Off[2] or 0
+			if align=="Left" then
+				arrowImg.AnchorPoint=Vector2.new(0,0.5)
+				arrowImg.Position=UDim2.new(0, offX2, 0.5, offY2)
+			elseif align=="Right" then
+				arrowImg.AnchorPoint=Vector2.new(1,0.5)
+				arrowImg.Position=UDim2.new(1, -offX2, 0.5, offY2)
+			else
+				arrowImg.AnchorPoint=Vector2.new(0.5,0.5)
+				arrowImg.Position=UDim2.new(0.5, offX2, 0.5, offY2)
+			end
+			arrowImg.Rotation = 0
+			if icon2Circ>0 then Instance.new("UICorner", arrowImg).CornerRadius = UDim.new(0,icon2Circ) end
+		end
+
+		if fx then
+			Library.ApplyEffects(b, fx, fx, mainSelectedState, fx, "DropdownHighlight", "SelectedDropdown")
+		end
+
+		return b, tl
+	end
+
+	if not showLabel then
+		btn, textLabel = buildDropdown(container, 0)
+	elseif textSide=="Up" then
+		labelObj = Instance.new("TextLabel", container)
+		labelObj.BackgroundTransparency = 1
+		labelObj.Text = labelText
+		labelObj.Font = labelFont
+		labelObj.TextSize = labelSz
+		labelObj.TextColor3 = labelCol
+		labelObj.TextTransparency = labelTrans
+		labelObj.RichText = true
+		labelObj.ZIndex = 6
+		labelObj.TextXAlignment = Enum.TextXAlignment.Center
+		labelObj.Size = UDim2.new(1,0,0,labelHeight)
+		labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, labelOff[2] or 0)
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj)
+			s.Thickness = labelOlThick
+			s.Color = labelOlCol
+			s.Transparency = labelOlTrans
+		end
+		btn, textLabel = buildDropdown(container, labelHeight+textGap)
+	elseif textSide=="Down" then
+		labelObj = Instance.new("TextLabel", container)
+		labelObj.BackgroundTransparency = 1
+		labelObj.Text = labelText
+		labelObj.Font = labelFont
+		labelObj.TextSize = labelSz
+		labelObj.TextColor3 = labelCol
+		labelObj.TextTransparency = labelTrans
+		labelObj.RichText = true
+		labelObj.ZIndex = 6
+		labelObj.TextXAlignment = Enum.TextXAlignment.Center
+		labelObj.Size = UDim2.new(1,0,0,labelHeight)
+		labelObj.Position = UDim2.new(0, labelOff[1] or 0, 0, buttonH+textGap+(labelOff[2] or 0))
+		if labelOlThick>0 then
+			local s = Instance.new("UIStroke", labelObj)
+			s.Thickness = labelOlThick
+			s.Color = labelOlCol
+			s.Transparency = labelOlTrans
+		end
+		btn, textLabel = buildDropdown(container, 0)
+	end
+
+	updateMainButtonText()
+
+	local function rotateArrow(targetRotation, duration)
+		if arrowImg then
+			local info = TweenInfo.new(duration or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			local tween = TweenService:Create(arrowImg, info, {Rotation = targetRotation})
+			tween:Play()
+			arrowRotation = targetRotation
+		end
+	end
+
+	local function getScreenGui()
+		if not btn then return PlayerGui end
+		return btn:FindFirstAncestorOfClass("ScreenGui") or PlayerGui
+	end
+
+	local function positionPopup()
+		if not popupData.Frame or not btn or not btn.Parent then return end
+		local btnAbsPos, btnAbsSize
+		local ok, err = pcall(function()
+			btnAbsPos = btn.AbsolutePosition
+			btnAbsSize = btn.AbsoluteSize
+		end)
+		if not ok then return end
+		local popupW = popupData.Width or 120
+		local popupH = popupData.Height or 60
+		local screenGui = getScreenGui()
+		if not screenGui then return end
+		local screenSize = screenGui.AbsoluteSize
+		if screenSize.X==0 or screenSize.Y==0 then return end
+		local x, y
+		if boardSide=="Left" then
+			x = btnAbsPos.X - popupW - 6
+			x = math.max(0, math.min(x, screenSize.X - popupW))
+		else
+			x = btnAbsPos.X + btnAbsSize.X + 6
+			x = math.max(0, math.min(x, screenSize.X - popupW))
+		end
+		y = btnAbsPos.Y
+		y = math.max(0, math.min(y, screenSize.Y - popupH))
+		popupData.Frame.Position = UDim2.new(0,x,0,y)
+	end
+
+	local function closePopup()
+		if not popupData.Open then return end
+		popupData.Open = false
+
+		mainSelectedState.value = false
+		local hl = HighlightRegistry[btn]
+		if hl and hl.Stop then hl.Stop() end
+
+		local targetRotation = arrowRotation + 180
+		rotateArrow(targetRotation, 0.25)
+
+		if popupData.Frame then
+			popupData.Frame:Destroy()
+			popupData.Frame = nil
+		end
+		if popupData.UserInputConnection then
+			popupData.UserInputConnection:Disconnect()
+			popupData.UserInputConnection = nil
+		end
+		if popupData.RenderConnection then
+			popupData.RenderConnection:Disconnect()
+			popupData.RenderConnection = nil
+		end
+		for i=#openDropdownClosers,1,-1 do
+			if openDropdownClosers[i]==closePopup then
+				table.remove(openDropdownClosers,i)
+			end
+		end
+	end
+
+	local function createPopup()
+		if popupData.Frame then return end
+		local screenGui = getScreenGui()
+		local popupFrame = Instance.new("Frame")
+		popupFrame.Name = "MultiDropdownPopup"
+		popupFrame.BackgroundColor3 = boardBgCol
+		popupFrame.BackgroundTransparency = boardBgTrans
+		popupFrame.BorderSizePixel = 0
+		popupFrame.ZIndex = 100
+		popupFrame.Active = false
+		popupFrame.Draggable = false
+		popupFrame.Parent = screenGui
+		if boardCorners>0 then
+			Instance.new("UICorner", popupFrame).CornerRadius = UDim.new(0,boardCorners)
+		end
+		if boardOlThick>0 then
+			local s = Instance.new("UIStroke", popupFrame)
+			s.Thickness = boardOlThick
+			s.Color = boardOlCol
+			s.Transparency = boardOlTrans
+			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		addTextureToFrame(popupFrame, boardTex, boardTexSz, boardTexTrans, boardTexCol, boardCorners)
+
+		local headerHeight = 30
+		local headerFrame = Instance.new("Frame", popupFrame)
+		headerFrame.Size = UDim2.new(1,-16,0,headerHeight)
+		headerFrame.Position = UDim2.new(0,8,0,4)
+		headerFrame.BackgroundTransparency = 1
+		headerFrame.ZIndex = 101
+
+		local boardIconImg = nil
+		local hasIcon = boardIconAsset and true or false
+		if hasIcon then
+			boardIconImg = Instance.new("ImageLabel", headerFrame)
+			boardIconImg.BackgroundTransparency = 1
+			boardIconImg.Size = UDim2.fromOffset(boardIconW, boardIconH)
+			boardIconImg.Image = formatAsset(boardIconAsset)
+			boardIconImg.ImageColor3 = boardIconCol
+			boardIconImg.ImageTransparency = boardIconTrans
+			boardIconImg.ZIndex = 102
+			local align = boardIconAlign
+			local offX = boardIconOff[1] or 0
+			local offY = boardIconOff[2] or 0
+			if align=="Left" then
+				boardIconImg.AnchorPoint=Vector2.new(0,0.5)
+				boardIconImg.Position=UDim2.new(0,offX,0.5,offY)
+			elseif align=="Right" then
+				boardIconImg.AnchorPoint=Vector2.new(1,0.5)
+				boardIconImg.Position=UDim2.new(1,-offX,0.5,offY)
+			else
+				boardIconImg.AnchorPoint=Vector2.new(0.5,0.5)
+				boardIconImg.Position=UDim2.new(0.5,offX,0.5,offY)
+			end
+			if boardIconCirc>0 then
+				Instance.new("UICorner", boardIconImg).CornerRadius = UDim.new(0,boardIconCirc)
+			end
+		end
+
+		local titleLabel = Instance.new("TextLabel", headerFrame)
+		titleLabel.BackgroundTransparency = 1
+		titleLabel.Text = popupTitle
+		titleLabel.Font = boardTitleFont
+		titleLabel.TextSize = boardTitleSz
+		titleLabel.TextColor3 = boardTitleCol
+		titleLabel.TextTransparency = boardTitleTrans
+		titleLabel.RichText = true
+		titleLabel.ZIndex = 103
+		local textAlign = boardTitleAlign
+		local textAlignEnum = (textAlign=="Left" and Enum.TextXAlignment.Left) or (textAlign=="Right" and Enum.TextXAlignment.Right) or Enum.TextXAlignment.Center
+		titleLabel.TextXAlignment = textAlignEnum
+		titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+		local overlap = hasIcon and boardIconAlign==textAlign
+		local offX = boardTitleOff[1] or 0
+		local offY = boardTitleOff[2] or 0
+		if overlap then
+			titleLabel.Size = UDim2.new(1,0,1,0)
+			if textAlign=="Left" then
+				titleLabel.AnchorPoint=Vector2.new(0,0.5)
+				titleLabel.Position=UDim2.new(0,offX,0.5,offY)
+			elseif textAlign=="Right" then
+				titleLabel.AnchorPoint=Vector2.new(1,0.5)
+				titleLabel.Position=UDim2.new(1,-offX,0.5,offY)
+			else
+				titleLabel.AnchorPoint=Vector2.new(0.5,0.5)
+				titleLabel.Position=UDim2.new(0.5,offX,0.5,offY)
+			end
+		else
+			titleLabel.Size = UDim2.new(1,0,1,0)
+			if textAlign=="Left" then
+				titleLabel.AnchorPoint=Vector2.new(0,0.5)
+				titleLabel.Position=UDim2.new(0,offX,0.5,offY)
+			elseif textAlign=="Right" then
+				titleLabel.AnchorPoint=Vector2.new(1,0.5)
+				titleLabel.Position=UDim2.new(1,-offX,0.5,offY)
+			else
+				titleLabel.AnchorPoint=Vector2.new(0.5,0.5)
+				titleLabel.Position=UDim2.new(0.5,offX,0.5,offY)
+			end
+		end
+		if boardTitleOlThick>0 then
+			local s = Instance.new("UIStroke", titleLabel)
+			s.Thickness = boardTitleOlThick
+			s.Color = boardTitleOlCol
+			s.Transparency = boardTitleOlTrans
+		end
+
+		local maxPerColumn = 5
+		local cellW = 54
+		local cellH = 22
+		local cellPadding = 4
+		local gridPadding = 5
+		local columns = math.ceil((#options + 1) / maxPerColumn)
+		local rows = math.min(#options + 1, maxPerColumn)
+		local contentW = columns*(cellW+cellPadding)-cellPadding + gridPadding*2
+		local contentH = rows*(cellH+cellPadding)-cellPadding + gridPadding*2
+
+		local optionsScroll = Instance.new("ScrollingFrame", popupFrame)
+		optionsScroll.Size = UDim2.new(0,contentW,0,contentH)
+		optionsScroll.Position = UDim2.new(0,8,0,headerHeight+8)
+		optionsScroll.BackgroundTransparency = 1
+		optionsScroll.BorderSizePixel = 0
+		optionsScroll.ZIndex = 104
+		optionsScroll.ScrollBarThickness = 3
+		optionsScroll.ScrollBarImageColor3 = boardTitleCol or Color3.fromRGB(255,255,255)
+		optionsScroll.CanvasSize = UDim2.new(0,contentW,0,contentH)
+		optionsScroll.ClipsDescendants = true
+
+		local gridLayout = Instance.new("UIGridLayout", optionsScroll)
+		gridLayout.FillDirection = Enum.FillDirection.Vertical
+		gridLayout.FillDirectionMaxCells = maxPerColumn
+		gridLayout.CellSize = UDim2.new(0,cellW,0,cellH)
+		gridLayout.CellPadding = UDim2.new(0,cellPadding,0,cellPadding)
+		gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+		local gridPad = Instance.new("UIPadding", optionsScroll)
+		gridPad.PaddingTop = UDim.new(0,gridPadding)
+		gridPad.PaddingBottom = UDim.new(0,gridPadding)
+		gridPad.PaddingLeft = UDim.new(0,gridPadding)
+		gridPad.PaddingRight = UDim.new(0,gridPadding)
+
+		optionButtons = {}
+		allButton = nil
+		allSelected = false
+
+		local function createOptionBtn(opt, isAll)
+			local optBtn = Instance.new("TextButton", optionsScroll)
+			optBtn.Size = UDim2.new(1,0,1,0)
+			optBtn.BackgroundColor3 = btnBgCol
+			optBtn.BackgroundTransparency = btnBgTrans
+			optBtn.Text = opt
+			optBtn.TextColor3 = btnTextCol
+			optBtn.TextTransparency = btnTextTrans
+			optBtn.Font = btnTextFont
+			optBtn.TextSize = btnTextSz
+			optBtn.AutoButtonColor = false
+			optBtn.BorderSizePixel = 0
+			optBtn.ZIndex = 105
+
+			optBtn.TextXAlignment = parseAlignment(btnTextAlignment)
+			optBtn.TextYAlignment = Enum.TextYAlignment.Center
+
+			if btnTextOffset and #btnTextOffset >= 2 then
+				local offX = btnTextOffset[1] or 0
+				local offY = btnTextOffset[2] or 0
+				if offX ~= 0 or offY ~= 0 then
+					local pad = Instance.new("UIPadding", optBtn)
+					if offX ~= 0 then
+						pad.PaddingLeft = UDim.new(0, offX)
+						pad.PaddingRight = UDim.new(0, -offX)
+					end
+					if offY ~= 0 then
+						pad.PaddingTop = UDim.new(0, offY)
+						pad.PaddingBottom = UDim.new(0, -offY)
+					end
+				end
+			end
+
+			if btnCorners>0 then
+				Instance.new("UICorner", optBtn).CornerRadius = UDim.new(0,math.min(4,btnCorners))
+			end
+			if btnOlThick>0 then
+				local s = Instance.new("UIStroke", optBtn)
+				s.Thickness = btnOlThick
+				s.Color = btnOlCol
+				s.Transparency = btnOlTrans
+				s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			end
+			if btnTex then
+				addTextureToFrame(optBtn, btnTex, btnTexSz, btnTexTrans, btnTexCol, btnCorners)
+			end
+
+			return optBtn
+		end
+
+		local allBtn = createOptionBtn("All", true)
+		allButton = allBtn
+		optionButtons["__ALL__"] = allBtn
+
+		local allSelectedState = { value = false }
+
+		local optionStates = {}
+		local optionButtonsList = {}
+
+		for i, opt in ipairs(options) do
+			local optBtn = createOptionBtn(opt, false)
+			optionButtons[opt] = optBtn
+			optionButtonsList[opt] = optBtn
+			local isSelected = selectedMap[opt] or false
+			local optSelectedState = { value = isSelected }
+			optionStates[opt] = optSelectedState
+		end
+
+		if fx then
+			Library.ApplyEffects(allBtn, fx, fx, allSelectedState, fx, "OptionHighlight", "SelectedOption")
+		end
+
+		for opt, optBtn in pairs(optionButtonsList) do
+			local state = optionStates[opt]
+			if fx then
+				Library.ApplyEffects(optBtn, fx, fx, state, fx, "OptionHighlight", "SelectedOption")
+			end
+			if state.value then
+				local hl = HighlightRegistry[optBtn]
+				if hl and hl.Start then hl.Start() end
+			end
+		end
+
+		allBtn.MouseButton1Click:Connect(function()
+			allSelected = not allSelected
+			local newState = allSelected
+			allSelectedState.value = newState
+			local allHl = HighlightRegistry[allBtn]
+			if newState then
+				if allHl and allHl.Start then allHl.Start() end
+			else
+				if allHl and allHl.Stop then allHl.Stop() end
+			end
+			for opt, btn in pairs(optionButtons) do
+				if opt ~= "__ALL__" then
+					selectedMap[opt] = newState
+					local state = optionStates[opt]
+					if state then
+						state.value = newState
+						local hl = HighlightRegistry[btn]
+						if newState then
+							if hl and hl.Start then hl.Start() end
+						else
+							if hl and hl.Stop then hl.Stop() end
+						end
+					end
+				end
+			end
+			updateMainButtonText()
+			local selected = {}
+			for k, v in pairs(selectedMap) do
+				if v then table.insert(selected, k) end
+			end
+			callback(selected)
+		end)
+
+		for opt, optBtn in pairs(optionButtonsList) do
+			optBtn.MouseButton1Click:Connect(function()
+				local newState = not selectedMap[opt]
+				selectedMap[opt] = newState
+				local state = optionStates[opt]
+				if state then
+					state.value = newState
+					local hl = HighlightRegistry[optBtn]
+					if newState then
+						if hl and hl.Start then hl.Start() end
+					else
+						if hl and hl.Stop then hl.Stop() end
+					end
+				end
+				updateMainButtonText()
+				local selected = {}
+				for k, v in pairs(selectedMap) do
+					if v then table.insert(selected, k) end
+				end
+				callback(selected)
+			end)
+		end
+
+		local popupW = contentW + 16
+		local popupH = headerHeight + 8 + contentH + 8
+		popupFrame.Size = UDim2.new(0,popupW,0,popupH)
+		popupData.Frame = popupFrame
+		popupData.Width = popupW
+		popupData.Height = popupH
+
+		local function onInputBegan(input, gameProcessed)
+			if gameProcessed then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				local pos = input.Position
+				if not popupData.Frame or not popupData.Frame.Parent then return end
+				local absPos = popupData.Frame.AbsolutePosition
+				local absSize = popupData.Frame.AbsoluteSize
+				local inside = pos.X>=absPos.X and pos.X<=absPos.X+absSize.X and pos.Y>=absPos.Y and pos.Y<=absPos.Y+absSize.Y
+				local onButton = false
+				if btn and btn.Parent then
+					local btnAbsPos = btn.AbsolutePosition
+					local btnAbsSize = btn.AbsoluteSize
+					onButton = pos.X>=btnAbsPos.X and pos.X<=btnAbsPos.X+btnAbsSize.X and pos.Y>=btnAbsPos.Y and pos.Y<=btnAbsPos.Y+btnAbsSize.Y
+				end
+				if not inside and not onButton then closePopup() end
+			end
+		end
+
+		popupData.UserInputConnection = UserInputService.InputBegan:Connect(onInputBegan)
+		local renderConn = RunService.RenderStepped:Connect(function()
+			if popupData.Open and popupData.Frame then positionPopup() end
+		end)
+		popupData.RenderConnection = renderConn
+		table.insert(openDropdownClosers, closePopup)
+	end
+
+	local function openPopup()
+		if popupData.Open then return end
+
+		mainSelectedState.value = true
+		local hl = HighlightRegistry[btn]
+		if hl and hl.Start then hl.Start() end
+
+		local targetRotation = arrowRotation + 180
+		rotateArrow(targetRotation, 0.25)
+
+		if not popupData.Frame then createPopup() end
+		popupData.Open = true
+		if popupData.Frame then
+			popupData.Frame.Visible = true
+			positionPopup()
+		end
+	end
+
+	local function togglePopup()
+		if popupData.Open then
+			closePopup()
+		else
+			Library._CloseAllDropdowns()
+			openPopup()
+		end
+	end
+
+	if btn then
+		btn.MouseButton1Click:Connect(togglePopup)
+	end
+
+	updateOffset(scrollFrame, buttonW)
+	if parent.RefreshHeight then parent.RefreshHeight() end
+	return btn
+end
+
+print("Crossy's Animated UI Library loaded successfully! (All features: Tabs, Buttons, Knobs, Dropdowns, MultiDropdown, TextBox)")
+return Library
