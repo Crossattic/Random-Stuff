@@ -375,6 +375,12 @@ end
 function Library.ApplyEffects(instance, normalFx, selectedFx, selectedState, highlightFx, highlightKey, selectedKeyPrefix)
 	highlightKey = highlightKey or "Highlight"
 	selectedKeyPrefix = selectedKeyPrefix or "Selected"
+	
+	-- ===== FIX: Skip if not a button (prevents MouseButton1Click error) =====
+	if not instance:IsA("GuiButton") then
+		return
+	end
+	
 	if not normalFx or not normalFx.EffectsData then return end
 	if instance:IsA("GuiButton") then instance.AutoButtonColor = false end
 	registerAbsoluteColors(instance)
@@ -1546,10 +1552,6 @@ function Library.AddTextBox(parent, cfg)
 		end
 		addTextureToFrame(frame, tex, texSz, texTrans, texCol, corners)
 
-		if fx then
-			Library.ApplyEffects(frame, fx, fx, focusSelectedState, highlightFx, "TextBoxHighlight")
-		end
-
 		local box = Instance.new("TextBox")
 		box.Size = UDim2.new(1, 0, 1, 0)
 		box.Position = UDim2.new(0, 0, 0, 0)
@@ -1570,14 +1572,19 @@ function Library.AddTextBox(parent, cfg)
 		padding.PaddingLeft = UDim.new(0, 4)
 		padding.PaddingRight = UDim.new(0, 4)
 
+		-- ===== FIX: Apply effects to the TextBox, not the Frame =====
+		if fx then
+			Library.ApplyEffects(box, fx, fx, focusSelectedState, highlightFx, "TextBoxHighlight")
+		end
+
 		box.Focused:Connect(function()
 			focusSelectedState.value = true
-			local hl = HighlightRegistry[frame]
+			local hl = HighlightRegistry[box]
 			if hl and hl.Start then hl.Start() end
 		end)
 		box.FocusLost:Connect(function()
 			focusSelectedState.value = false
-			local hl = HighlightRegistry[frame]
+			local hl = HighlightRegistry[box]
 			if hl and hl.Stop then hl.Stop() end
 		end)
 
