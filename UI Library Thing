@@ -1,0 +1,1333 @@
+
+local A=game:GetService("Players")local B=game:GetService("RunService")local C=game:GetService("TweenService")local D=game:GetService("ReplicatedStorage")local E=game:GetService("Debris")local F=game:GetService("StarterGui")local G=game:GetService("Workspace") local H=A.LocalPlayer local I=H.Character or H.CharacterAdded:Wait()H.CharacterAdded:Connect(function(a)I=a end) local function J()local a=G:FindFirstChild("Debug Room")return a and a:FindFirstChild("Car")end local function K()local a=J()if not a then return nil end local b=a:FindFirstChild("Seat")local c=b and b:FindFirstChild("Vehicle Seat")or a:FindFirstChild("Vehicle Seat")if c and c:IsA("VehicleSeat")then return c end return nil end local function L(a)for _,b in ipairs(a:GetDescendants())do if b:IsA("BasePart")then b.AssemblyLinearVelocity=Vector3.zero b.AssemblyAngularVelocity=Vector3.zero end end end local function M(a,b)for _,c in ipairs(a:GetDescendants())do if c:IsA("BasePart")then c.CanCollide=b end end end local function N(a,b)for _,c in ipairs(a:GetDescendants())do if c:IsA("BasePart")then c.CanCollide=b c.Anchored=false end end end local function O(a)local b=Instance.new("Sound")b.SoundId=a b.Volume=1 b.Parent=workspace b:Play()b.Ended:Connect(function()b:Destroy()end)end function WePrepare() I.HumanoidRootPart.CFrame=CFrame.new(-241.5939,-5.2783,1.1775) local a=Instance.new("Part")a.Size=Vector3.new(20,3.5,100)a.Position=Vector3.new(-4,-10,120)a.Transparency=1 a.Anchored=true a.Parent=G local b=Instance.new("Part")b.Size=Vector3.new(20,3.5,100)b.Position=Vector3.new(-4,-10,-110)b.Transparency=1 b.Anchored=true b.Parent=G local c=Instance.new("Part")c.Size=Vector3.new(100,3.5,50)c.Position=Vector3.new(-130,-10.25,15)c.Transparency=1 c.Anchored=true c.Parent=G end function Prep2() local a:Model?=nil local b:VehicleSeat?=nil local c:BasePart?=nil local d:Humanoid?=nil local e:BasePart?=nil local f:Part?=nil local g:{[BasePart]:CFrame}={}local h=-15 local i=CFrame.Angles(0,math.rad(90),0) local function j()return CFrame.Angles(0,math.rad(90),0)*i end local function k(l,m)if not a or not f then return end L(a)f.CFrame=CFrame.new(l)*m*j()for n,o in pairs(g)do if n and n.Parent then n.CFrame=f.CFrame*o end end end local function p()a=J()if not a then F:SetCore("SendNotification",{Title="Oh noes :(",Text="The car isn't there, switch servers."})return end b=K()if not b then return end c=I:FindFirstChild("HumanoidRootPart")d=I:FindFirstChildOfClass("Humanoid")if not c or not d then return end e=a.PrimaryPart or a:FindFirstChildWhichIsA("BasePart")if not e then return end local q=c.CFrame c.CFrame=b.CFrame task.wait(0.1)d.Sit=true local r,s=5,0 while not d.Sit and s<r do task.wait(0.1)s+=0.1 end task.wait(0.25)if b:IsA("VehicleSeat")then b.Disabled=true end task.wait(0.1)if d.Sit then d.Sit=false end c.CFrame=q f=Instance.new("Part")f.Name="CarSpinner"f.Size=Vector3.new(1,1,1)f.Color=Color3.fromRGB(0,255,0)f.Material=Enum.Material.Neon f.Anchored=true f.CanCollide=false f.Transparency=1 f.Parent=G f.CFrame=e.CFrame*CFrame.new(0,0,-1.5)table.clear(g)for _,t in ipairs(a:GetDescendants())do if t:IsA("BasePart")then g[t]=f.CFrame:ToObjectSpace(t.CFrame)end end M(a,false) local u=I:FindFirstChild("LoopTpCarSignal")if u then u:Destroy()end local v=Instance.new("BoolValue")v.Name="LoopTpCarSignal"v.Value=true v.Parent=I task.spawn(function()while I and I:FindFirstChild("LoopTpCarSignal")do if c and f and f.Parent then local w=c.CFrame k(w.Position+w.LookVector*4+Vector3.new(0,h,0),w.Rotation)end task.wait()end end)end local x=K()if x then x.HeadsUpDisplay=false end p() end function AddPrompt() local a,b=false,false local c:Model?=nil local d:Tool?=nil local e:RBXScriptConnection?=nil local f:RBXScriptConnection?=nil local g:ProximityPrompt?=nil local function h()if not I then return false end local i=I:FindFirstChildOfClass("Humanoid")local j=K()return i~=nil and j~=nil and i.SeatPart==j end local function k(l,m,n,o,p,q)if not I or not c then return end local r=I:FindFirstChild("HumanoidRootPart")if not r then return end L(c)local s=r.CFrame local t=s.Position+s.LookVector*l+s.RightVector*m+s.UpVector*n local u=CFrame.new(t)*s.Rotation*CFrame.Angles(math.rad(o),math.rad(p),math.rad(q))if c.PrimaryPart then c:SetPrimaryPartCFrame(u)else for _,v in ipairs(c:GetDescendants())do if v:IsA("BasePart")then v.CFrame=u end end end end local function w()if not a or not c then return end local x=I and I:FindFirstChild("HumanoidRootPart")L(c)if x then local y=x.CFrame local z=Vector3.new((y.Position+y.LookVector*5).X,0.5,(y.Position+y.LookVector*5).Z)local aa=CFrame.new(z)*y.Rotation if c.PrimaryPart then c:SetPrimaryPartCFrame(aa)else for _,ab in ipairs(c:GetDescendants())do if ab:IsA("BasePart")then ab.CFrame=aa end end end end N(c,true)local ac=K()if ac then ac.Disabled=false end if d then d:Destroy()d=nil end a,b,c=false,false,nil if e then e:Disconnect()e=nil end if f then f:Disconnect()f=nil end if g and not h()then g.Enabled=true end end local function ad()if a then w()return end local ae=J()if not ae then return end if g then g.Enabled=false end N(ae,false)local af=K()if af then af.Disabled=true end d=Instance.new("Tool")d.Name="CarCarryTool"d.RequiresHandle=true local ag=Instance.new("Part")ag.Name="Handle"ag.Size=Vector3.new(1,1,1)ag.Transparency=1 ag.CanCollide=false ag.Anchored=false ag.Parent=d d.GripPos=Vector3.new(0,-1.5,0)d.Parent=H:WaitForChild("Backpack")c=ae a=true b=true d.Equipped:Connect(function()if a then b=true end end)d.Unequipped:Connect(function()if a then b=false end end)d.Activated:Connect(function()w()end) if e then e:Disconnect()end e=B.Heartbeat:Connect(function()if a and not b and c then k(-2,1,-0.5,90,45,0)end end) if f then f:Disconnect()end f=B.Heartbeat:Connect(function()if a and b and c then k(3,0.5,0,90,0,90)end end) local ah=I:FindFirstChildOfClass("Humanoid")if ah then ah:EquipTool(d)end end local function ai()local aj=J()if not aj then return end local ak=aj:FindFirstChild("CarBase")or aj.PrimaryPart or aj:FindFirstChildWhichIsA("BasePart")if not ak then return end local al=ak:FindFirstChild("CarryCarPrompt")if not al then al=Instance.new("ProximityPrompt")al.Name="CarryCarPrompt"al.ObjectText="Car"al.ActionText="Hold to Carry"al.HoldDuration=0.5 al.MaxActivationDistance=10 al.RequiresLineOfSight=false al.Parent=ak al.Triggered:Connect(function(am)if am==H and not a and not h()then ad()end end)end g=al if a or h()then al.Enabled=false else al.Enabled=true end end task.spawn(function()while true do ai()task.wait(0.2)end end) end function Craftt() local a=G.CurrentCamera local b: {RBXScriptConnection}={} local function c(d)local e=d.ChildAdded:Connect(function(f)if f.Name=="_vfxBuild"or f.Name=="_vfxAppear"then task.defer(function()if f and f.Parent then f:Destroy()end end)end end)table.insert(b,e)for _,g in ipairs(d:GetChildren())do if g.Name=="_vfxBuild"or g.Name=="_vfxAppear"then g:Destroy()end end end local function h(i)for _,j in ipairs(b)do j:Disconnect()end table.clear(b)if not i then return end local k=H.Character or H.CharacterAdded:Wait()local l=k:WaitForChild("HumanoidRootPart",5)if l then c(l)end local m=k:WaitForChild("Head",5)if m then c(m)end end local n:ScreenGui?=nil local o:Frame?=nil local p:TextLabel?=nil local q=1.5 local r:RBXScriptConnection?=nil local function s()if not n or not o then return end local t=H.Character if t then local u=t:FindFirstChild("Right Arm")or t:FindFirstChild("RightHand")if u and u:IsA("BasePart")then local v=(u.CFrame*CFrame.new(0,-1,0)).Position local w=(a.CFrame.Position-v).Magnitude local x,y=a:WorldToScreenPoint(v)if y then o.Visible=true local z=math.rad(a.FieldOfView)local aa=a.ViewportSize.Y local ab=aa/(2*w*math.tan(z/2))local ac=math.clamp(q*ab,10,500)o.Size=UDim2.new(0,ac,0,ac)o.Position=UDim2.new(0,x.X,0,x.Y)else o.Visible=false end end end end local function ad()if n then return end n=Instance.new("ScreenGui")n.Name="HammerGui"n.Parent=H:WaitForChild("PlayerGui")o=Instance.new("Frame")o.Size=UDim2.new(0,65,0,65)o.BackgroundColor3=Color3.new(0,0,0)o.BorderSizePixel=0 o.AnchorPoint=Vector2.new(0.5,0.5)o.Parent=n p=Instance.new("TextLabel")p.Size=UDim2.new(1,0,1,0)p.BackgroundTransparency=1 p.Text="Hammer"p.TextColor3=Color3.new(1,1,1)p.Font=Enum.Font.GothamBold p.TextScaled=true p.AnchorPoint=Vector2.new(0.5,0.5)p.Position=UDim2.new(0.5,0,0.5,0)p.ZIndex=2 p.Parent=o if not r then r=B.RenderStepped:Connect(s)end end local function ae()if n then n:Destroy()n=nil o=nil p=nil if r then r:Disconnect()r=nil end end end local af={"rbxassetid://77760028525832","rbxassetid://5909769329"}local ag="rbxassetid://18765052890"local ah="rbxassetid://17569164461"local ai="rbxassetid://123476113915973" local function aj(ak)local al=ak:FindFirstChild("HumanoidRootPart")if not al then return end local am=Instance.new("Sound")am.SoundId=af[math.random(1,#af)]am.Volume=1 am.Parent=al am:Play()am.Ended:Connect(function()am:Destroy()end)end local function an(ak)local al=ak:FindFirstChild("HumanoidRootPart")if not al then return end local am=Instance.new("Sound")am.SoundId=ag am.Volume=1 am.Parent=al am:Play()am.Ended:Connect(function()am:Destroy()end)end local function ao(ap,aq)local ar=Instance.new("Animation")ar.AnimationId=aq local as=ap:WaitForChild("Animator")return as:LoadAnimation(ar)end local function at(au)local av=0 while av<au do av+=B.Heartbeat:Wait()end end local function aw(ax)local ay=Instance.new("ParticleEmitter")ay.Name="HitEffectEmitter"ay.Texture="rbxassetid://5755091589"ay.Rate=20 ay.Speed=NumberRange.new(5,5)ay.Lifetime=NumberRange.new(0.25,0.25)ay.RotSpeed=NumberRange.new(0,0)ay.Rotation=NumberRange.new(-100,100)ay.LightEmission=0.5 ay.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0,0),NumberSequenceKeypoint.new(0.2,5,0),NumberSequenceKeypoint.new(1,0,0)})ay.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1,0),NumberSequenceKeypoint.new(0.1,0.1,0),NumberSequenceKeypoint.new(0.9,0.1,0),NumberSequenceKeypoint.new(1,1,0)})ay.EmissionDirection=Enum.NormalId.Top ay.Orientation=Enum.ParticleOrientation.FacingCamera ay.Enabled=true ay.Parent=ax return ay end local ba:Model?=nil local bb:Instance?=nil local bc:BasePart?=nil local bd:Humanoid?=nil local be:BasePart?=nil local bf:Part?=nil local bg:{[BasePart]:CFrame}={}local bh=-15 local bi=CFrame.Angles(0,math.rad(90),0)local bj=false local bk=0 local bl=22 local bm=false local bn=false local function bo()return CFrame.Angles(0,math.rad(90),0)*bi end local function bp(bq,br)if not ba or not bf then return end L(ba)bf.CFrame=CFrame.new(bq)*br*bo()for bs,bt in pairs(bg)do if bs and bs.Parent then bs.CFrame=bf.CFrame*bt end end end local function bu(bv)if bm then return end bm=true local bw=D:FindFirstChild("GeneralAbility")if bw and bw:IsA("RemoteEvent")then bw:FireServer("equip")bw:FireServer("equip")end an(bv)bi=CFrame.Angles(0,0,0)local bx:Vector3?=nil local by:CFrame?=nil if bc and bf then local bz=bc.CFrame bx=bz.Position+bz.LookVector*4 by=bz.Rotation end local ca,cb,cc=1,tick(),true task.spawn(function()while cc and tick()-cb<ca do local cd=math.clamp((tick()-cb)/ca,0,1)if bf and bx and by then bp(Vector3.new(bx.X,bx.Y+math.sin(cd*math.pi)*10,bx.Z),by)end task.wait()end cc=false if bf and bx and by then bp(bx,by)end bn=true if bf then bf:Destroy()end if ba then M(ba,true)L(ba)end if bb and bb.Parent and(bb:IsA("VehicleSeat")or bb:IsA("Seat"))then bb.Disabled=false end end)end local function ce(cf)bk+=1 if not bj then bh=-4 bj=true else bh+=0.25 end bi=CFrame.Angles(math.rad(math.random(-35,35)),math.rad(math.random(-35,35)),math.rad(math.random(-35,35)))if bk>=bl then task.spawn(function()bu(cf)end)end end local function cg(ch)ba=J()if not ba then return false end bb=K()if not bb then return false end if bb:IsA("VehicleSeat")or bb:IsA("Seat")then bb.Disabled=true end bc=ch:FindFirstChild("HumanoidRootPart")bd=ch:FindFirstChildOfClass("Humanoid")if not bc or not bd then return false end be=ba.PrimaryPart or ba:FindFirstChildWhichIsA("BasePart")if not be then return false end bf=Instance.new("Part")bf.Name="CarSpinner"bf.Size=Vector3.new(1,1,1)bf.Color=Color3.fromRGB(0,255,0)bf.Material=Enum.Material.Neon bf.Anchored=true bf.CanCollide=false bf.Transparency=1 bf.Parent=G bf.CFrame=be.CFrame*CFrame.new(0,0,-1.5)table.clear(bg)for _,ci in ipairs(ba:GetDescendants())do if ci:IsA("BasePart")then bg[ci]=bf.CFrame:ToObjectSpace(ci.CFrame)end end M(ba,false)task.spawn(function()while not bn do if bc and bf and bf.Parent then local cj=bc.CFrame bp(cj.Position+cj.LookVector*4+Vector3.new(0,bh,0),cj.Rotation)end task.wait()end end)return true end local ck=false local function cl()if ck then return end local cm=H.Character if not cm then return end local cn=cm:FindFirstChild("LoopTpCarSignal")or G:FindFirstChild("LoopTpCarSignal")if cn then cn:Destroy()end bd=cm:FindFirstChildOfClass("Humanoid")if not bd then return end cg(cm)ck=true local co,cp=bd.WalkSpeed,bd.JumpPower bd.WalkSpeed=0 bd.JumpPower=0 local cq=ao(bd,ah)local cr=ao(bd,ai)cq:Play(0,0.8)cq:AdjustSpeed(0.3)ad()while cq.IsPlaying and cq.TimePosition<0.1 do B.Heartbeat:Wait()end cq:AdjustSpeed(0)cr:Play(0,0.6)cr:AdjustSpeed(1)while cr.IsPlaying and cr.TimePosition<0.5 do B.Heartbeat:Wait()end local cs=J()local ct=cs and cs:FindFirstChild("CarBase")local cu=ct and aw(ct)or nil local cv=D:FindFirstChild("Events")and D.Events:FindFirstChild("Elf")local cw,cx,cy,cz=22,1.5,0,true local da,db=0,false local dc=true local dd:RBXScriptConnection dd=B.Heartbeat:Connect(function(de)if cw<=0 then dc=false dd:Disconnect()return end da+=de if da>=0.15 then da-=0.15 db=not db if cv and cv:IsA("RemoteEvent")then cv:FireServer(db and "vfx_smoke_large"or "vfx_smoke_medium")end end cy+=de*cx if cz then local df=0.5+cy*(0.6-0.5)/((0.6-0.5)/cx)if df>=0.6 then cr.TimePosition=0.6 aj(cm)ce(cm)if cv and cv:IsA("RemoteEvent")then cv:FireServer("vfx_craft_done")end cz=false cy=0 else cr.TimePosition=df end else local dg=0.6-cy*(0.6-0.5)/((0.6-0.5)/cx)if dg<=0.5 then cr.TimePosition=0.5 cz=true cy=0 cw-=1 else cr.TimePosition=dg end end end) while dc do B.Heartbeat:Wait()end if cu then cu:Destroy()end ae()bd.WalkSpeed=co bd.JumpPower=cp cr.TimePosition=0.6 cr:AdjustSpeed(0) task.spawn(function()if cv and cv:IsA("RemoteEvent")then cv:FireServer("vfx_smoke_medium")for dh=1,7 do cv:FireServer("vfx_craft_done")if dh<7 then at(0.1)end end cv:FireServer("remove_smoke")end end) at(0.25)cq:Stop(0)at(0.25)cr:AdjustSpeed(1)ck=false end local di=Instance.new("Tool")di.Name="CraftingTool"di.RequiresHandle=true di.TextureId="rbxassetid://560667850" local dj=Instance.new("Part")dj.Name="Handle"dj.Size=Vector3.new(2,2,2)dj.Material=Enum.Material.Concrete dj.Color=Color3.fromRGB(255,255,255)dj.CanCollide=false dj.Massless=true dj.Transparency=1 dj.Parent=di local dk=Instance.new("Sound")dk.Name="EquipSound"dk.SoundId="rbxassetid://130589416125171"dk.Volume=1 dk.Parent=dj local dl=Instance.new("Sound")dl.Name="ActivateSound"dl.SoundId="rbxassetid://120313184072947"dl.Volume=0.3 dl.Parent=dj di.Parent=H:WaitForChild("Backpack") local dm=Instance.new("ScreenGui")dm.Name="CraftingPromptGui"dm.Enabled=false dm.ResetOnSpawn=false dm.Parent=H:WaitForChild("PlayerGui") local dn=Instance.new("TextLabel")dn.Name="CraftPrompt"dn.AnchorPoint=Vector2.new(0.5,1)dn.Size=UDim2.new(0.4,0,0.06,0)dn.Text="Tap / Click to Craft"dn.TextScaled=true dn.Font=Enum.Font.SourceSansBold dn.TextColor3=Color3.fromRGB(255,255,255)dn.BackgroundTransparency=1 local dp=Instance.new("UIStroke")dp.Thickness=2 dp.Color=Color3.fromRGB(0,0,0)dp.Parent=dn dn.Parent=dm local dq=UDim2.new(0.5,0,0.75,0)local dr=UDim2.new(0.5,0,0.75,150)dn.Position=dr local ds=C:Create(dn,TweenInfo.new(0.25,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=dq}) di.Equipped:Connect(function()dk:Play()ad()dn.Position=dr dm.Enabled=true ds:Play()end) di.Unequipped:Connect(function()ae()ds:Cancel()dm.Enabled=false dn.Position=dr end) di.Activated:Connect(function()coroutine.wrap(cl)()h(true)if H.Character and H.Character:FindFirstChild("HumanoidRootPart")then dl.Parent=H.Character.HumanoidRootPart end dl:Play()E:AddItem(dl,dl.TimeLength+0.1)dm:Destroy()di:Destroy()ad()task.wait(6.5)h(false)coroutine.wrap(AddPrompt)()
+coroutine.wrap(TheTrueStuffBegins)()
+end) end
+
+coroutine.wrap(WePrepare)()
+coroutine.wrap(Prep2)()
+wait(2.5)
+coroutine.wrap(Craftt)()
+
+function TheTrueStuffBegins()
+local RunService = game:GetService("RunService") local TweenService = game:GetService("TweenService") local Players = game:GetService("Players") local Debris = game:GetService("Debris") local ReplicatedStorage = game:GetService("ReplicatedStorage") local SoundService = game:GetService("SoundService") local UserInputService = game:GetService("UserInputService") local Workspace = game:GetService("Workspace") local LocalPlayer = Players.LocalPlayer local PlayerGui = LocalPlayer:WaitForChild("PlayerGui") local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() LocalPlayer.CharacterAdded:Connect(function(newCharacter) Character = newCharacter end) local Drive local CarAttach local Shop local Hitboxes local FuelBar local Score local CarButton local Shop local function getCar(): Model? local debugRoom = Workspace:FindFirstChild("Debug Room") if not debugRoom then return nil end local car = debugRoom:FindFirstChild("Car") if car and car:IsA("Model") then return car end return nil end local function getVehicleSeat(): VehicleSeat? local car = getCar() if not car then return nil end local seatFolder = car:FindFirstChild("Seat") local seat = (seatFolder and seatFolder:FindFirstChild("Vehicle Seat")) or car:FindFirstChild("Vehicle Seat") if seat and seat:IsA("VehicleSeat") then return seat end return nil end local function isSittingInCar(): boolean local char = LocalPlayer.Character local humanoid = char and char:FindFirstChildOfClass("Humanoid") local seat = getVehicleSeat() return humanoid ~= nil and seat ~= nil and humanoid.SeatPart == seat end local function isWheelPart(inst: Instance): boolean return inst:IsA("BasePart") and string.lower(inst.Name) == "wheel" and inst.Parent ~= nil and string.lower(inst.Parent.Name) == "wheel" end local function getWheels(): {BasePart} local car = getCar() if not car then return {} end local wheels = {} for _, inst in ipairs(car:GetDescendants()) do if isWheelPart(inst) then table.insert(wheels, inst) end end table.sort(wheels, function(a, b) if math.abs(a.Position.Z - b.Position.Z) > 0.05 then return a.Position.Z < b.Position.Z end return a.Position.X < b.Position.X end) return wheels end local function getWheel(index: number): BasePart? return getWheels()[index] end local function getFlatLook(): Vector3 local camera = Workspace.CurrentCamera if not camera then return Vector3.new(1, 0, 0) end local look = camera.CFrame.LookVector local flat = Vector3.new(look.X, 0, look.Z) if flat.Magnitude < 0.001 then return Vector3.new(1, 0, 0) end return flat.Unit end local function zeroVelocities(model: Model) if not model then return end for _, inst in ipairs(model:GetDescendants()) do if inst:IsA("BasePart") then inst.AssemblyLinearVelocity = Vector3.zero inst.AssemblyAngularVelocity = Vector3.zero end end end local function zeroCharacterVerticalVelocity() local char=LocalPlayer.Character if not char then return end local root=char:FindFirstChild("HumanoidRootPart") if root and root:IsA("BasePart") then local v=root.AssemblyLinearVelocity root.AssemblyLinearVelocity=Vector3.new(v.X,0,v.Z) root.AssemblyAngularVelocity=Vector3.zero end end local function setModelCFrame(model: Model, cf: CFrame) if not model or not model.PrimaryPart then return end pcall(function() model:SetPrimaryPartCFrame(cf) end) end local function playOneShot(soundId: string, volume: number?, timePosition: number?) local sound = Instance.new("Sound") sound.SoundId = soundId sound.Volume = volume or 1 sound.TimePosition = timePosition or 0 sound.Parent = SoundService sound:Play() sound.Ended:Connect(function() sound:Destroy() end) end local function enableDrag(guiObject: GuiObject): () -> boolean local dragging = false local dragged = false local dragStart = Vector3.zero local startPos = UDim2.new() guiObject.InputBegan:Connect(function(input) if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end dragging = true dragged = false dragStart = input.Position startPos = guiObject.Position local ended: RBXScriptConnection? ended = input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false if ended then ended:Disconnect() end end end) end) UserInputService.InputChanged:Connect(function(input) if not dragging then return end if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end local delta = input.Position - dragStart if delta.Magnitude > 4 then dragged = true end guiObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end) return function() return dragged end end
+-- Drive functionality --
+local function getDriftLeanAngle(): number
+	local currentVelocity = Drive and Drive.GetVelocity and Drive.GetVelocity() or Vector3.zero
+	if currentVelocity.Magnitude <= 0.1 then
+		return 0
+	end
+	local desired = getFlatLook()
+	local crossY = currentVelocity.Unit:Cross(desired).Y
+	return math.clamp(-crossY * math.rad(35), -math.rad(35), math.rad(35))
+end
+
+local function getHoverWheelCFrame(rootPart: BasePart, localOffset: CFrame, rollAngle: number, leanAngle: number?): CFrame
+	local wheelReference = rootPart.CFrame * localOffset
+	local wheelPosition = wheelReference.Position
+	local resolvedLean = leanAngle
+	if resolvedLean == nil then
+		resolvedLean = getDriftLeanAngle()
+	end
+	local axle = rootPart.CFrame.UpVector
+	local wheelUp = wheelReference.UpVector
+	local tangent = wheelUp - axle * wheelUp:Dot(axle)
+	if tangent.Magnitude < 0.001 then
+		tangent = wheelReference.LookVector - axle * wheelReference.LookVector:Dot(axle)
+	end
+	if tangent.Magnitude < 0.001 then
+		tangent = rootPart.CFrame.LookVector
+	end
+	tangent = tangent.Unit
+	local back = axle:Cross(tangent).Unit
+	local hoverCf = CFrame.fromMatrix(wheelPosition, axle, tangent, back)
+	local speed = Drive and Drive.GetVelocity and Drive.GetVelocity().Magnitude or 0
+	if speed < 0.35 then
+		resolvedLean = 0
+	end
+	local leanWorld = CFrame.fromAxisAngle(rootPart.CFrame.LookVector, resolvedLean)
+	return CFrame.new(wheelPosition) * leanWorld * (hoverCf - hoverCf.Position)
+end
+do Drive = {} do local ENGINE_SOUND_ID = "rbxassetid://532147820" local SCREECH_SOUND_ID = "rbxassetid://109487442763183" local ALERT_SOUND_1 = "rbxassetid://100629505985705" local ALERT_SOUND_2 = "rbxassetid://140047654906018" local driving = false local braking = false local canRotate = true local velocity = Vector3.zero local maxSpeed = 1.5 local targetMaxSpeed = 1.5 local acceleration = 8 local steerStrength = 0.05 local drag = 0.98 local driveElapsed = 0 local gravityVelocity = 0 local gravity = 196.2 local gravityActive = false local characterRootOffset: CFrame? = nil local speedTweenConn: RBXScriptConnection? = nil local brakeLock = false local car: Model? = nil local primary: BasePart? = nil local engineSound: Sound? = nil local screechSound: Sound? = nil local driveConn: RBXScriptConnection? = nil local hoverWheels = false local dashRemaining = 0 local dashDirection = Vector3.zero local dashElapsed = 0 local dashDuration = 0.75 local dashDistance = 75 local dashPreviousDistance = 0 local speedLinePart: BasePart? = nil local speedLineEmitter: ParticleEmitter? = nil local speedLinesOn = false local speedLineConn: RBXScriptConnection? = nil local smokePart: BasePart? = nil local alertBusy = false local alertParts = {} local rotatingTires = false local wheelRollAngle = 0 local smoothedSteer = 0 local smoothedLean = 0 local wheelDataList = {} local tireSpinConn: RBXScriptConnection? = nil local hoverWheelConn: RBXScriptConnection? = nil local hoverWheelLoopId = 0 local function captureWheelData() wheelDataList = {} local currentCar = getCar() if not currentCar then return end local rootPart = currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart") if not rootPart then return end for _, wheelPart in ipairs(getWheels()) do if wheelPart and wheelPart.Parent then table.insert(wheelDataList, {Part = wheelPart, LocalOffset = rootPart.CFrame:ToObjectSpace(wheelPart.CFrame)}) end end if #wheelDataList==0 then for _, desc in ipairs(currentCar:GetDescendants()) do if desc:IsA("BasePart") and string.lower(desc.Name)=="wheel" then table.insert(wheelDataList, {Part = desc, LocalOffset = rootPart.CFrame:ToObjectSpace(desc.CFrame)}) end end end end local function applyWheelRoll() if not rotatingTires and not hoverWheels then return end if #wheelDataList == 0 then captureWheelData() end local currentCar = getCar() local rootPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart")) if not rootPart then return end local desired = getFlatLook() local steerAngle = 0 if canRotate and velocity.Magnitude > 0.1 then local velDir = velocity.Unit local crossY = velDir:Cross(desired).Y steerAngle = math.clamp(crossY * math.rad(35), -math.rad(35), math.rad(35)) end for index, data in ipairs(wheelDataList) do local wheelPart = data.Part if wheelPart and wheelPart.Parent then if Drive._orbiting then local skip=false for _,unit in ipairs(Drive._orbitUnits or {}) do if unit.part==wheelPart then skip=true break end end if skip then continue end end local localPos = data.LocalOffset.Position if hoverWheels then wheelPart.CFrame = getHoverWheelCFrame(rootPart, data.LocalOffset, 0) local particlePart=(Drive._hoverParticleParts or {})[index] if particlePart and particlePart.Parent then particlePart.CFrame=CFrame.new(wheelPart.Position) end else local steerRotation = CFrame.Angles(0, steerAngle, 0) local rollRotation = CFrame.Angles(wheelRollAngle, 0, 0) wheelPart.CFrame = rootPart.CFrame * CFrame.new(localPos) * steerRotation * data.LocalOffset.Rotation * rollRotation end end end end local function stopSounds() if engineSound then engineSound:Stop() engineSound:Destroy() engineSound = nil end if screechSound then screechSound:Stop() screechSound:Destroy() screechSound = nil end end local function attachSounds(part: BasePart) stopSounds() local engine = Instance.new("Sound") engine.Name = "DriveEngineSound" engine.SoundId = ENGINE_SOUND_ID engine.Volume = 2 engine.Looped = true engine.PlaybackSpeed = 1.65 engine.Parent = part engineSound = engine local screech = Instance.new("Sound") screech.Name = "TireScreechSound" screech.SoundId = SCREECH_SOUND_ID screech.Volume = 0 screech.Looped = true screech.PlaybackSpeed = 1 screech.Parent = part screechSound = screech end local function abortSpeedTween() if speedTweenConn then speedTweenConn:Disconnect() speedTweenConn = nil end end local function coastStop(duration: number) if not car or not primary then return end if braking or not driving then return end braking = true driving = false abortSpeedTween() local startVelocity = velocity local startTime = tick() if engineSound then pcall(function() TweenService:Create(engineSound, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {PlaybackSpeed = 0.5, Volume = 0,}):Play() end) end if screechSound then pcall(function() TweenService:Create(screechSound, TweenInfo.new(0.3), {Volume = 0}):Play() end) end local extra=Drive._secondDriveSound if extra and extra.Parent then pcall(function() TweenService:Create(extra, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {PlaybackSpeed = 0.5, Volume = 0}):Play() end) end while tick() - startTime < duration do if not car or not primary then break end zeroVelocities(car) zeroCharacterVerticalVelocity() local alpha = (tick() - startTime) / duration local current = startVelocity * (1 - alpha) if current.Magnitude < 0.001 then break end local nextPos = primary.Position + current if car.PrimaryPart then setModelCFrame(car, CFrame.new(nextPos) * car.PrimaryPart.CFrame.Rotation) end task.wait() end stopSounds() velocity = Vector3.zero gravityVelocity = 0 gravityActive = false characterRootOffset = nil zeroCharacterVerticalVelocity() braking = false if driveConn then driveConn:Disconnect() driveConn = nil end end local function startDriveLoop() if driveConn then return end car = getCar() if not car then return end primary = car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart") if not primary then return end attachSounds(primary) if engineSound then engineSound:Play() end if screechSound then screechSound:Play() end velocity = Vector3.zero driveElapsed = 0 gravityVelocity = 0 gravityActive = true braking = false maxSpeed = targetMaxSpeed
+local characterNow = LocalPlayer.Character
+local characterRoot = characterNow and characterNow:FindFirstChild("HumanoidRootPart")
+characterRootOffset = if characterRoot then primary.CFrame:ToObjectSpace(characterRoot.CFrame) else nil local look = getFlatLook() if look.Magnitude > 0.001 then velocity = look * maxSpeed end driveConn = RunService.Heartbeat:Connect(function(dt) if braking or not driving then gravityActive = false return end if car then zeroVelocities(car) end driveElapsed += dt local desired = getFlatLook() local speed = velocity.Magnitude local speedRatio = math.clamp(speed / math.max(maxSpeed, 0.001), 0, 1) do local pitch=0.65+speedRatio*1.0 local vol=math.clamp(speedRatio*2.2,0,2) if engineSound then engineSound.PlaybackSpeed=pitch engineSound.Volume=vol end local extra=Drive._secondDriveSound if extra and extra.Parent then extra.PlaybackSpeed=pitch extra.Volume=if speedRatio<0.08 then 0 else vol end end local nextSpeed = speed if desired.Magnitude > 0.001 then if speed > 0.1 then local velDir = velocity.Unit local dot = math.clamp(velDir:Dot(desired), -1, 1) local angle = math.acos(dot) local crossY = velDir:Cross(desired).Y if canRotate and screechSound then if angle > math.rad(25) and speedRatio > 0.4 then screechSound.Volume = math.min(0.8, screechSound.Volume + dt * 3) screechSound.PlaybackSpeed = 0.9 + (speedRatio * 0.2) else screechSound.Volume = math.max(0, screechSound.Volume - dt * 4) end end if canRotate then local turnStrength = steerStrength if angle > math.pi / 2 then turnStrength = math.max(turnStrength, 0.15) end local newDir = velDir:Lerp(desired, turnStrength) if newDir.Magnitude > 0.001 then velocity = newDir.Unit * speed end else velocity = velDir * speed end else velocity = desired * speed end local accelAlpha = math.clamp(acceleration * dt, 0, 1) nextSpeed = speed + (maxSpeed - speed) * accelAlpha velocity = if velocity.Magnitude > 0.001 then velocity.Unit * nextSpeed else desired * nextSpeed else velocity = Vector3.zero if screechSound then screechSound.Volume = 0 end end velocity = velocity * drag if car and primary then local dashStep = Vector3.zero if dashRemaining > 0 then dashElapsed = math.min(dashDuration, dashElapsed + dt) local alpha = math.clamp(dashElapsed / dashDuration, 0, 1) local eased = 1 - (1 - alpha) * (1 - alpha) local targetDistance = dashDistance * eased local step = math.max(0, targetDistance - dashPreviousDistance) dashPreviousDistance = targetDistance dashRemaining = math.max(0, dashDistance - targetDistance) dashStep = dashDirection * step if dashRemaining <= 0 then dashRemaining = 0 dashDirection = Vector3.zero dashElapsed = 0 dashPreviousDistance = 0 end end local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+rayParams.FilterDescendantsInstances = {car, LocalPlayer.Character}
+local boundsCf, boundsSize = car:GetBoundingBox()
+local halfHeight = boundsSize.Y * 0.5
+local bottomOffset = (boundsCf.Position.Y - halfHeight) - primary.Position.Y
+local rayOrigin = primary.Position + Vector3.new(0, 0.25, 0)
+local rayResult = Workspace:Raycast(rayOrigin, Vector3.new(0, -100, 0), rayParams)
+local hoverHeight = hoverWheels and 0.5 or 0
+local groundY = rayResult and (rayResult.Position.Y - bottomOffset + hoverHeight) or nil
+local verticalStep = 0
+if gravityActive and groundY then
+    local currentY = primary.Position.Y
+    if currentY <= groundY + 0.05 and gravityVelocity <= 0 then
+        gravityVelocity = 0
+        verticalStep = groundY - currentY
+    else
+        gravityVelocity += gravity * dt
+        local nextY = currentY - gravityVelocity * dt
+        if nextY <= groundY then
+            verticalStep = groundY - currentY
+            gravityVelocity = 0
+        else
+            verticalStep = -gravityVelocity * dt
+        end
+    end
+elseif gravityActive then
+    gravityVelocity += gravity * dt
+    verticalStep = -gravityVelocity * dt
+else
+    gravityVelocity = 0
+end
+local nextPos = primary.Position + velocity + dashStep + Vector3.new(0, verticalStep, 0)
+if canRotate then setModelCFrame(car, CFrame.lookAt(nextPos, nextPos + desired)) elseif car.PrimaryPart then setModelCFrame(car, CFrame.new(nextPos) * car.PrimaryPart.CFrame.Rotation) end
+local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+if currentRoot and characterRootOffset and car.PrimaryPart then
+    currentRoot.CFrame = car.PrimaryPart.CFrame * characterRootOffset
+end end if hoverWheels then applyWheelRoll() elseif rotatingTires then wheelRollAngle += velocity.Magnitude * dt * 25 applyWheelRoll() end end) end function Drive.SetHoverWheels(enable: boolean)
+ hoverWheels = enable and true or false
+ if hoverWheels then
+  Drive._hoverStartupActive = true
+ end
+   if hoverWheels and not Drive._hoverHeightApplied then
+  local currentCar = getCar()
+  local rootPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+  if rootPart then
+   local characterRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+   if characterRoot then
+     characterRoot.CFrame = characterRoot.CFrame * CFrame.new(0, 0.5, 0)
+   end
+    setModelCFrame(currentCar, rootPart.CFrame * CFrame.new(0, 0.5, 0))
+   Drive._hoverHeightApplied = true
+  end
+ end
+ hoverWheelLoopId += 1
+ local loopId = hoverWheelLoopId
+ if hoverWheelConn then hoverWheelConn:Disconnect() hoverWheelConn = nil end
+ if not hoverWheels then
+  local hoverBaseplate = Workspace:FindFirstChild("HoverWheelsAntiVoidBaseplate")
+  if hoverBaseplate and hoverBaseplate:IsA("BasePart") then
+   hoverBaseplate.CanCollide = false
+  end
+  local currentCar = getCar()
+  local rootPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+  if rootPart then
+   if Drive._hoverHeightApplied then
+    local characterRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if characterRoot then
+     characterRoot.CFrame = characterRoot.CFrame * CFrame.new(0, -0.5, 0)
+    end
+     setModelCFrame(currentCar, rootPart.CFrame * CFrame.new(0, -0.5, 0))
+    rootPart = currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart")
+    Drive._hoverHeightApplied = false
+   end
+   for _, data in ipairs(wheelDataList) do
+    local wheelPart = data.Part
+    if wheelPart and wheelPart.Parent then
+     wheelPart.CFrame = rootPart.CFrame * data.LocalOffset
+    end
+   end
+  end
+  local particleParts = Drive._hoverParticleParts
+  Drive._hoverParticleParts = nil
+  if particleParts then
+   for _, particlePart in ipairs(particleParts) do
+    if particlePart and particlePart.Parent then
+     particlePart.CanCollide = false
+     for _, child in ipairs(particlePart:GetDescendants()) do
+      if child:IsA("ParticleEmitter") then
+       child.Enabled = false
+      end
+     end
+    end
+   end
+   task.delay(0.5, function()
+    for _, particlePart in ipairs(particleParts) do
+     if particlePart and particlePart.Parent then
+      particlePart:Destroy()
+     end
+    end
+   end)
+  end
+  return
+ end
+ captureWheelData()
+ local oldParticleParts = Drive._hoverParticleParts
+ if oldParticleParts then
+  for _, oldPart in ipairs(oldParticleParts) do
+   if oldPart and oldPart.Parent then oldPart:Destroy() end
+  end
+ end
+ local particleParts = {}
+ Drive._hoverParticleParts = particleParts
+ for _, data in ipairs(wheelDataList) do
+  local wheelPart = data.Part
+  if wheelPart and wheelPart.Parent then
+   local particlePart = Instance.new("Part")
+   particlePart.Name = "HoverWheelParticlePart"
+   particlePart.Size = Vector3.new(0.2, 0.2, 0.2)
+   particlePart.CFrame = wheelPart.CFrame
+   particlePart.Anchored = false
+   particlePart.Massless = true
+   particlePart.CanCollide = false
+   particlePart.CanTouch = false
+   particlePart.CanQuery = false
+   particlePart.Transparency = 1
+   particlePart.CFrame = CFrame.new(wheelPart.Position)
+   particlePart.Parent = Workspace
+
+   local emitter = Instance.new("ParticleEmitter")
+   emitter.Texture = "rbxassetid://17608119070"
+   emitter.Rate = 20
+   emitter.Speed = NumberRange.new(1, 1)
+   emitter.Lifetime = NumberRange.new(0.25, 0.25)
+   emitter.RotSpeed = NumberRange.new(0, 0)
+   emitter.Rotation = NumberRange.new(-100, 100)
+   emitter.Acceleration = Vector3.zero
+   emitter.Drag = 0
+   emitter.LightEmission = 3
+   emitter.LightInfluence = 0
+   emitter.ZOffset = 0
+   emitter.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(152, 255, 240)), ColorSequenceKeypoint.new(1, Color3.fromRGB(85, 255, 255))})
+   emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0, 0), NumberSequenceKeypoint.new(1, 4, 0)})
+   emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1, 0), NumberSequenceKeypoint.new(0.10100000351667404, 0.10000000149011612, 0), NumberSequenceKeypoint.new(0.4385906755924225, 0, 0), NumberSequenceKeypoint.new(1, 1, 0)})
+   emitter.EmissionDirection = Enum.NormalId.Bottom
+   emitter.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+   emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.None
+   emitter.FlipbookFramerate = NumberRange.new(1, 1)
+   emitter.FlipbookMode = Enum.ParticleFlipbookMode.Loop
+   emitter.FlipbookStartRandom = false
+   emitter.Brightness = 3
+   emitter.Squash = NumberSequence.new({NumberSequenceKeypoint.new(0, 0, 0), NumberSequenceKeypoint.new(1, 0, 0)})
+   emitter.Shape = Enum.ParticleEmitterShape.Box
+   emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+   emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+   emitter.SpreadAngle = Vector2.zero
+   emitter.WindAffectsDrag = false
+   emitter.TimeScale = 1
+   emitter.VelocityInheritance = 0
+   emitter.LockedToPart = true
+   emitter:SetAttribute("EmitCount", "1")
+   emitter.Enabled = true
+   emitter.Parent = particlePart
+   table.insert(particleParts, particlePart)
+  end
+ end
+ task.spawn(function()
+  while hoverWheels and loopId == hoverWheelLoopId do
+   if driving then
+    local currentCar = getCar()
+    local rootPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+    if rootPart then
+     if #wheelDataList == 0 then captureWheelData() end
+     for index, data in ipairs(wheelDataList) do
+      local wheelPart = data.Part
+      if wheelPart and wheelPart.Parent then
+       wheelPart.CFrame = getHoverWheelCFrame(rootPart, data.LocalOffset, 0)
+       local particlePart = (Drive._hoverParticleParts or {})[index]
+       if particlePart and particlePart.Parent then
+        particlePart.CFrame = CFrame.new(wheelPart.Position)
+       end
+      end
+     end
+    end
+   else
+    if Drive._hoverStartupActive then
+    local currentCar = getCar()
+    local primaryPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+    if currentCar and primaryPart then
+     local boundsCf, boundsSize = currentCar:GetBoundingBox()
+     local halfHeight = boundsSize.Y * 0.5
+     local bottomOffset = (boundsCf.Position.Y - halfHeight) - primaryPart.Position.Y
+     local rayParams = RaycastParams.new()
+     rayParams.FilterType = Enum.RaycastFilterType.Exclude
+     rayParams.FilterDescendantsInstances = {currentCar, LocalPlayer.Character}
+     local rayResult = Workspace:Raycast(primaryPart.Position + Vector3.new(0, 0.25, 0), Vector3.new(0, -100, 0), rayParams)
+      local targetY = rayResult and (rayResult.Position.Y - bottomOffset + 0.5) or nil
+     if targetY and primaryPart.Position.Y < targetY - 0.05 then
+      local lift = targetY - primaryPart.Position.Y
+      local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+      if currentRoot then
+       currentRoot.CFrame = CFrame.new(currentRoot.Position + Vector3.new(0, lift, 0)) * currentRoot.CFrame.Rotation
+      end
+      setModelCFrame(currentCar, CFrame.new(primaryPart.Position + Vector3.new(0, lift, 0)) * primaryPart.CFrame.Rotation)
+     end
+    end
+    applyWheelRoll()
+    else
+     Drive.SetHoverWheels(false)
+    end
+   end
+   for _, particlePart in ipairs(Drive._hoverParticleParts or {}) do
+    local wheelPart = particlePart and particlePart.Parent
+    if particlePart and particlePart.Parent and wheelPart and wheelPart:IsA("BasePart") then
+     particlePart.CFrame = CFrame.new(wheelPart.Position)
+    end
+   end
+   task.wait(0.01)
+  end
+ end)
+end function Drive.IsHoverWheels(): boolean return hoverWheels end
+function Drive.SetOrbitingWheel(enable: boolean)
+	Drive._orbiting = enable and true or false
+	if Drive._orbitConn then Drive._orbitConn:Disconnect() Drive._orbitConn=nil end
+	local function playOrbitHit(targetRoot: BasePart)
+		local snd=Instance.new("Sound")
+		snd.SoundId="rbxassetid://5207614483"
+		snd.Volume=1
+		snd.Parent=targetRoot
+		snd:Play()
+		snd.Ended:Connect(function() if snd.Parent then snd:Destroy() end end)
+		local fx=Instance.new("Part")
+		fx.Name="OrbitHitFx"
+		fx.Size=Vector3.new(2,2,2)
+		fx.Transparency=1
+		fx.Anchored=true
+		fx.CanCollide=false
+		fx.CanTouch=false
+		fx.CFrame=targetRoot.CFrame
+		fx.Parent=Workspace
+		local function addEmitter(props)
+			local e=Instance.new("ParticleEmitter")
+			for k,v in pairs(props) do e[k]=v end
+			e.Enabled=true
+			e.Parent=fx
+			return e
+		end
+		addEmitter({Texture="rbxassetid://15751693964",Rate=300,Speed=NumberRange.new(0.33546242117881775,24.323711395263672),Lifetime=NumberRange.new(2,2),RotSpeed=NumberRange.new(0,0),Rotation=NumberRange.new(-180,180),Acceleration=Vector3.new(0,7,0),Drag=6.400000095367432,LightEmission=0.5,LightInfluence=0,ZOffset=3,Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(0,0,0)),ColorSequenceKeypoint.new(1,Color3.fromRGB(97,97,97))}),Size=NumberSequence.new({NumberSequenceKeypoint.new(0,3.917515277862549,0),NumberSequenceKeypoint.new(0.1548387110233307,5.411478519439697,0.2153199017047882),NumberSequenceKeypoint.new(1,6.550737380981445,0.5696293115615845)}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1,0),NumberSequenceKeypoint.new(0.11380880326032639,0.9375,0),NumberSequenceKeypoint.new(1,1,0)}),EmissionDirection=Enum.NormalId.Top,Orientation=Enum.ParticleOrientation.FacingCamera,FlipbookLayout=Enum.ParticleFlipbookLayout.Grid4x4,FlipbookFramerate=NumberRange.new(4,12.461999893188477),FlipbookMode=Enum.ParticleFlipbookMode.Loop,FlipbookStartRandom=false,Brightness=0,Shape=Enum.ParticleEmitterShape.Box,ShapeInOut=Enum.ParticleEmitterShapeInOut.Outward,ShapeStyle=Enum.ParticleEmitterShapeStyle.Volume,SpreadAngle=Vector2.new(360,360),WindAffectsDrag=false,TimeScale=1,VelocityInheritance=0,LockedToPart=true})
+		addEmitter({Texture="rbxassetid://7917936192",Rate=60,Speed=NumberRange.new(30,30),Lifetime=NumberRange.new(1,1.5),RotSpeed=NumberRange.new(0,0),Rotation=NumberRange.new(0,0),Acceleration=Vector3.zero,Drag=0,LightEmission=1,LightInfluence=0,ZOffset=0,Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,170,0)),ColorSequenceKeypoint.new(1,Color3.fromRGB(170,0,0))}),Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25,0),NumberSequenceKeypoint.new(1,0.05000000074505806,0)}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1,0),NumberSequenceKeypoint.new(0.1448691189289093,0,0),NumberSequenceKeypoint.new(1,1,0)}),EmissionDirection=Enum.NormalId.Right,Orientation=Enum.ParticleOrientation.VelocityParallel,FlipbookLayout=Enum.ParticleFlipbookLayout.None,FlipbookFramerate=NumberRange.new(1,1),FlipbookMode=Enum.ParticleFlipbookMode.Loop,FlipbookStartRandom=false,Brightness=50,Squash=NumberSequence.new({NumberSequenceKeypoint.new(0,-2,0),NumberSequenceKeypoint.new(1,0,0)}),Shape=Enum.ParticleEmitterShape.Box,ShapeInOut=Enum.ParticleEmitterShapeInOut.Outward,ShapeStyle=Enum.ParticleEmitterShapeStyle.Volume,SpreadAngle=Vector2.new(360,360),WindAffectsDrag=false,TimeScale=1,VelocityInheritance=0,LockedToPart=false})
+		addEmitter({Texture="rbxassetid://7917936192",Rate=100,Speed=NumberRange.new(100,100),Lifetime=NumberRange.new(0.25,0.3499999940395355),RotSpeed=NumberRange.new(0,0),Rotation=NumberRange.new(0,0),Acceleration=Vector3.zero,Drag=0,LightEmission=1,LightInfluence=0,ZOffset=0,Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,170,0)),ColorSequenceKeypoint.new(1,Color3.fromRGB(170,0,0))}),Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.5,0),NumberSequenceKeypoint.new(1,0.05000000074505806,0)}),Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1,0),NumberSequenceKeypoint.new(0.1448691189289093,0,0),NumberSequenceKeypoint.new(1,1,0)}),EmissionDirection=Enum.NormalId.Right,Orientation=Enum.ParticleOrientation.VelocityParallel,FlipbookLayout=Enum.ParticleFlipbookLayout.None,FlipbookFramerate=NumberRange.new(1,1),FlipbookMode=Enum.ParticleFlipbookMode.Loop,FlipbookStartRandom=false,Brightness=50,Squash=NumberSequence.new({NumberSequenceKeypoint.new(0,-2,0),NumberSequenceKeypoint.new(1,0,0)}),Shape=Enum.ParticleEmitterShape.Box,ShapeInOut=Enum.ParticleEmitterShapeInOut.Outward,ShapeStyle=Enum.ParticleEmitterShapeStyle.Volume,SpreadAngle=Vector2.new(10,10),WindAffectsDrag=false,TimeScale=1,VelocityInheritance=0,LockedToPart=false})
+		task.spawn(function()
+			local started=tick()
+			while fx.Parent and targetRoot.Parent and tick()-started<1 do
+				fx.CFrame=targetRoot.CFrame
+				task.wait()
+			end
+		end)
+		task.delay(0.35,function()
+			if fx.Parent then
+				for _,child in ipairs(fx:GetChildren()) do
+					if child:IsA("ParticleEmitter") then child.Enabled=false end
+				end
+			end
+		end)
+		task.delay(1,function()
+			if fx.Parent then fx:Destroy() end
+		end)
+	end
+	local function destroyUnit(unit)
+		if unit.particle and unit.particle.Parent then unit.particle:Destroy() end
+		if unit.hitbox and unit.hitbox.Parent then unit.hitbox:Destroy() end
+		if unit.sound and unit.sound.Parent then unit.sound:Stop() unit.sound:Destroy() end
+	end
+	local function restoreOrbitWheel()
+		if Drive._orbitDriveSound then
+			Drive._orbitDriveSound:Stop()
+			Drive._orbitDriveSound:Destroy()
+			Drive._orbitDriveSound=nil
+		end
+		local currentCar=getCar()
+		local rootPart=currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+		for _,unit in ipairs(Drive._orbitUnits or {}) do
+			destroyUnit(unit)
+			local wheelPart=unit.part
+			if wheelPart then
+				if unit.parent and unit.parent.Parent then
+					wheelPart.Parent=unit.parent
+				elseif currentCar then
+					wheelPart.Parent=currentCar
+				end
+				if rootPart and unit.offset then
+					wheelPart.CFrame=rootPart.CFrame*unit.offset
+				end
+				wheelPart.CanCollide=true
+				wheelPart.Massless=false
+				wheelPart.Anchored=false
+				wheelPart.AssemblyLinearVelocity=Vector3.zero
+				wheelPart.AssemblyAngularVelocity=Vector3.zero
+			end
+			if wheelPart and CarAttach and CarAttach.SetPartOffset then
+				CarAttach.SetPartOffset(wheelPart)
+			end
+		end
+		Drive._orbitUnits={}
+		Drive._orbitWheel=nil
+		Drive._orbitData=nil
+		Drive._orbitHitCooldown=nil
+	end
+	if not Drive._orbiting then
+		restoreOrbitWheel()
+		return
+	end
+	captureWheelData()
+	local wanted=math.clamp(Drive._orbitWheelCount or 1,1,2)
+	local candidates={}
+	local used={}
+	for _,data in ipairs(wheelDataList) do
+		if data.Part and not used[data.Part] then
+			used[data.Part]=true
+			table.insert(candidates,data)
+		end
+	end
+	if #candidates<wanted then
+		for _,wheelPart in ipairs(getWheels()) do
+			if wheelPart and not used[wheelPart] then
+				used[wheelPart]=true
+				local currentCar=getCar()
+				local rootPart=currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+				table.insert(candidates,{Part=wheelPart,LocalOffset=if rootPart then rootPart.CFrame:ToObjectSpace(wheelPart.CFrame) else CFrame.new()})
+			end
+		end
+	end
+	local function pickCorner(list,wantFront,wantLeft)
+		local best,bestScore=nil,nil
+		for _,data in ipairs(list) do
+			local p=data.LocalOffset.Position
+			local score=(if wantFront then -p.Z else p.Z)+(if wantLeft then -p.X else p.X)
+			if not bestScore or score>bestScore then
+				best=data
+				bestScore=score
+			end
+		end
+		return best
+	end
+	local picked={}
+	local frontLeft=pickCorner(candidates,true,true)
+	if frontLeft then table.insert(picked,frontLeft) end
+	if wanted>=2 then
+		local rest={}
+		for _,data in ipairs(candidates) do
+			if data~=frontLeft then table.insert(rest,data) end
+		end
+		local backRight=pickCorner(rest,false,false)
+		if backRight then table.insert(picked,backRight) end
+	end
+	local count=math.min(wanted,#picked)
+	Drive._orbitUnits={}
+	Drive._orbitHitCooldown={}
+	local filterList={LocalPlayer.Character,getCar()}
+	local function makeParticle(wheelPart)
+		local particlePart=Instance.new("Part")
+		particlePart.Name="OrbitWheelParticlePart"
+		particlePart.Size=Vector3.new(0.2,0.2,0.2)
+		particlePart.CFrame=CFrame.new(wheelPart.Position)
+		particlePart.Anchored=true
+		particlePart.Massless=true
+		particlePart.CanCollide=false
+		particlePart.CanTouch=false
+		particlePart.CanQuery=false
+		particlePart.Transparency=1
+		particlePart.Parent=Workspace
+		local emitter=Instance.new("ParticleEmitter")
+		emitter.Texture="rbxassetid://516792623"
+		emitter.Rate=20
+		emitter.Speed=NumberRange.new(1,1)
+		emitter.Lifetime=NumberRange.new(0.25,0.25)
+		emitter.RotSpeed=NumberRange.new(0,0)
+		emitter.Rotation=NumberRange.new(-100,100)
+		emitter.Acceleration=Vector3.zero
+		emitter.Drag=0
+		emitter.LightEmission=3
+		emitter.LightInfluence=0
+		emitter.ZOffset=0
+		emitter.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,80,80)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,0))})
+		emitter.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0,0),NumberSequenceKeypoint.new(1,6,0)})
+		emitter.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1,0),NumberSequenceKeypoint.new(0.10100000351667404,0.10000000149011612,0),NumberSequenceKeypoint.new(0.4385906755924225,0,0),NumberSequenceKeypoint.new(1,1,0)})
+		emitter.EmissionDirection=Enum.NormalId.Bottom
+		emitter.Orientation=Enum.ParticleOrientation.VelocityPerpendicular
+		emitter.FlipbookLayout=Enum.ParticleFlipbookLayout.None
+		emitter.FlipbookFramerate=NumberRange.new(1,1)
+		emitter.FlipbookMode=Enum.ParticleFlipbookMode.Loop
+		emitter.FlipbookStartRandom=false
+		emitter.Brightness=3
+		emitter.Squash=NumberSequence.new({NumberSequenceKeypoint.new(0,0,0),NumberSequenceKeypoint.new(1,0,0)})
+		emitter.Shape=Enum.ParticleEmitterShape.Box
+		emitter.ShapeInOut=Enum.ParticleEmitterShapeInOut.Outward
+		emitter.ShapeStyle=Enum.ParticleEmitterShapeStyle.Volume
+		emitter.SpreadAngle=Vector2.zero
+		emitter.WindAffectsDrag=false
+		emitter.TimeScale=1
+		emitter.VelocityInheritance=0
+		emitter.LockedToPart=true
+		emitter.Enabled=true
+		emitter.Parent=particlePart
+		return particlePart
+	end
+	for i=1,count do
+		local data=picked[i]
+		if data and data.Part then
+			local wheelPart=data.Part
+			wheelPart.CanCollide=false
+			wheelPart.Massless=true
+			wheelPart.Anchored=false
+			pcall(function() wheelPart:SetNetworkOwner(LocalPlayer) end)
+			local parent=wheelPart.Parent
+			local particlePart=makeParticle(wheelPart)
+			local hitbox=Instance.new("Part")
+			hitbox.Name="OrbitWheelHitbox"
+			hitbox.Size=Vector3.new(6.5,6.5,6.5)
+			hitbox.Transparency=1
+			hitbox.Anchored=true
+			hitbox.CanCollide=false
+			hitbox.CanTouch=false
+			hitbox.CanQuery=true
+			hitbox.Massless=true
+			hitbox.CFrame=wheelPart.CFrame
+			hitbox.Parent=Workspace
+			table.insert(filterList,wheelPart)
+			table.insert(filterList,particlePart)
+			table.insert(filterList,hitbox)
+			table.insert(Drive._orbitUnits,{
+				part=wheelPart,
+				parent=parent,
+				offset=data.LocalOffset,
+				particle=particlePart,
+				hitbox=hitbox,
+				phase=math.rad(180*(i-1)),
+			})
+		end
+	end
+	if #Drive._orbitUnits==0 then return end
+	Drive._orbitWheel=Drive._orbitUnits[1].part
+	local overlap=OverlapParams.new()
+	overlap.FilterType=Enum.RaycastFilterType.Exclude
+	local orbitSound=Instance.new("Sound")
+	orbitSound.Name="OrbitDriveLoop"
+	orbitSound.SoundId="rbxassetid://5347824216"
+	orbitSound.Volume=0.85
+	orbitSound.Looped=true
+	orbitSound.Parent=Drive._orbitUnits[1].part
+	orbitSound:Play()
+	Drive._orbitDriveSound=orbitSound
+	Drive._orbitAngle=0
+	Drive._orbitConn=RunService.Heartbeat:Connect(function(dt)
+		if not Drive._orbiting then return end
+		local currentCar=getCar()
+		local rootPart=currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+		if not rootPart then return end
+		Drive._orbitAngle += math.rad(Drive._orbitSpinSpeed or 270)*dt
+		overlap.FilterDescendantsInstances=filterList
+		for _,unit in ipairs(Drive._orbitUnits) do
+			local wheelPart=unit.part
+			if wheelPart and wheelPart.Parent then
+				local offset=CFrame.Angles(0,Drive._orbitAngle+unit.phase,0)*CFrame.new(10,0,0)
+				wheelPart.Anchored=false
+				wheelPart.CanCollide=false
+				wheelPart.Massless=true
+				wheelPart.AssemblyLinearVelocity=Vector3.zero
+				wheelPart.AssemblyAngularVelocity=Vector3.zero
+				wheelPart.CFrame=getHoverWheelCFrame(rootPart,offset,0,0)
+				if unit.particle and unit.particle.Parent then unit.particle.CFrame=CFrame.new(wheelPart.Position) end
+				if unit.hitbox and unit.hitbox.Parent then
+					unit.hitbox.CFrame=CFrame.new(wheelPart.Position)
+					for _,part in ipairs(Workspace:GetPartsInPart(unit.hitbox,overlap)) do
+						if string.lower(part.Name)=="humanoidrootpart" then
+							local target=part.Parent
+							if target and target~=LocalPlayer.Character then
+								local hum=target:FindFirstChildOfClass("Humanoid")
+								if hum and hum.Health>0 then
+									local now=tick()
+									if not Drive._orbitHitCooldown[target] or now-Drive._orbitHitCooldown[target]>=0.75 then
+										Drive._orbitHitCooldown[target]=now
+										playOrbitHit(part)
+										local hitRoot = part
+						task.delay(0.2, function()
+							local generalHit = ReplicatedStorage:FindFirstChild("GeneralHit")
+							if generalHit and generalHit:IsA("RemoteEvent") and hitRoot and hitRoot.Parent then
+								pcall(function()
+									generalHit:FireServer(hitRoot)
+								end)
+							end
+						end)
+										if Hitboxes and Hitboxes.PlayS then Hitboxes.PlayS("rbxassetid://124543461907751",1,0) end
+										if Hitboxes and Hitboxes.ScreenFlash then Hitboxes.ScreenFlash(255,165,0,0.5) end
+										if Score and Score.AddScore then Score.AddScore(150) end
+										if Score and Score.ScoreNotif then Score.ScoreNotif("Cutted",150) end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+function Drive.Dash(distance: number): boolean if not driving or braking or not car or not primary or dashRemaining > 0 then return false end local direction = getFlatLook() if direction.Magnitude <= 0.001 then return false end dashDistance = math.max(0, distance or 0) if dashDistance <= 0 then return false end dashDirection = direction.Unit dashElapsed = 0 dashPreviousDistance = 0 dashRemaining = dashDistance return true end function Drive.SetAcceleration(rate: number) acceleration = math.max(0.1, rate) end function Drive.CarDrive(enable: boolean, brakeDuration: number?) if enable then if driving or brakeLock then return end if braking then braking = false end driving = true stopSounds() if maxSpeed == 0 then maxSpeed = 1.5 targetMaxSpeed = 1.5 end startDriveLoop() else gravityActive = false if driving and not braking and not brakeLock then coastStop(brakeDuration or 1.0) end end end function Drive.CanRotateDrive(enable: boolean) canRotate = enable end function Drive.GetSpeed(): number return targetMaxSpeed end function Drive.SetSpeed(speed: number, duration: number?) abortSpeedTween() local original = 1.5 local clamped = math.max(0.1, speed) if duration and duration > 0 then targetMaxSpeed = clamped maxSpeed = clamped task.delay(duration, function() if driving then local fromSpeed = maxSpeed local started = tick() local recover = 0.5 while tick() - started < recover do if not driving then break end local alpha = (tick() - started) / recover local blended = fromSpeed + (original - fromSpeed) * alpha maxSpeed = blended targetMaxSpeed = blended task.wait() end if driving then maxSpeed = original targetMaxSpeed = original end else maxSpeed = original targetMaxSpeed = original end end) else targetMaxSpeed = clamped local fromSpeed = maxSpeed local started = tick() local tweenDur = 0.3 speedTweenConn = RunService.Heartbeat:Connect(function() local alpha = math.min((tick() - started) / tweenDur, 1) local eased = alpha * alpha * (3 - 2 * alpha) maxSpeed = fromSpeed + (clamped - fromSpeed) * eased if alpha >= 1 then maxSpeed = clamped abortSpeedTween() end end) end end function Drive.Brake(stopDuration: number, waitAfter: number?) if not driving or braking or brakeLock then return end brakeLock = true coastStop(stopDuration) if waitAfter and waitAfter > 0 then task.wait(waitAfter) end brakeLock = false if not driving and not braking then Drive.CarDrive(true) end end function Drive.SpeedLines(enable: boolean) speedLinesOn = enable if not enable then if speedLineEmitter then speedLineEmitter.Enabled = false end if speedLineConn then speedLineConn:Disconnect() speedLineConn = nil end local oldPart = speedLinePart speedLinePart = nil speedLineEmitter = nil if oldPart then task.delay(0.25, function() if oldPart.Parent then oldPart:Destroy() end end) end return end if speedLinePart then speedLinePart:Destroy() speedLinePart = nil end local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() char:WaitForChild("HumanoidRootPart") local part = Instance.new("Part") part.Name = "SpeedLinesFollowPart" part.Size = Vector3.new(30, 30, 2) part.Anchored = true part.CanCollide = false part.Transparency = 1 part.Parent = Workspace speedLinePart = part local emitter = Instance.new("ParticleEmitter") emitter.Texture = "http://www.roblox.com/asset/?id=7716164395" emitter.Rate = 90 emitter.Speed = NumberRange.new(125, 125) emitter.Lifetime = NumberRange.new(0.25, 0.25) emitter.RotSpeed = NumberRange.new(0, 0) emitter.Rotation = NumberRange.new(0, 0) emitter.Acceleration = Vector3.zero emitter.Drag = 0 emitter.LightEmission = 0 emitter.LightInfluence = 0 emitter.ZOffset = 1 emitter.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)) emitter.Size = NumberSequence.new(3) emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1),}) emitter.EmissionDirection = Enum.NormalId.Front emitter.Orientation = Enum.ParticleOrientation.VelocityParallel emitter.Brightness = 10 emitter.Squash = NumberSequence.new(-1) emitter.Shape = Enum.ParticleEmitterShape.Box emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume emitter.SpreadAngle = Vector2.zero emitter.Enabled = false emitter.Parent = part speedLineEmitter = emitter part.Destroying:Connect(function() if speedLinePart == part then speedLinePart = nil speedLineEmitter = nil end end) speedLineConn = RunService.Heartbeat:Connect(function() if not speedLinesOn or not speedLinePart or not speedLineEmitter then return end if velocity.Magnitude > maxSpeed * 0.35 then speedLineEmitter.Enabled = true local charNow = LocalPlayer.Character local root = charNow and charNow:FindFirstChild("HumanoidRootPart") if root then local moveDir = if velocity.Magnitude > 0.001 then velocity.Unit else getFlatLook() local lookCf = CFrame.lookAt(root.Position, root.Position - moveDir) speedLinePart.CFrame = lookCf * CFrame.new(0, 0, 15) end else speedLineEmitter.Enabled = false end end) end function Drive.CarSmoke(enable: boolean) if not enable then if smokePart then local emitter = smokePart:FindFirstChildOfClass("ParticleEmitter") if emitter then emitter.Enabled = false end Debris:AddItem(smokePart, 5) smokePart = nil end return end local currentCar = getCar() local carBase = currentCar and currentCar:FindFirstChild("CarBase") if not carBase or not carBase:IsA("BasePart") then return end if smokePart then smokePart:Destroy() smokePart = nil end local offsetPart = Instance.new("Part") offsetPart.Name = "CarParticleOffsetPart" offsetPart.Size = Vector3.new(0.5, 0.5, 0.5) offsetPart.Transparency = 1 offsetPart.CanCollide = false offsetPart.Anchored = false offsetPart.CFrame = carBase.CFrame * CFrame.new(2, 0, 0) * CFrame.Angles(0, math.rad(180), 0) offsetPart.Parent = currentCar smokePart = offsetPart local weld = Instance.new("WeldConstraint") weld.Part0 = carBase weld.Part1 = offsetPart weld.Parent = offsetPart local emitter = Instance.new("ParticleEmitter") emitter.Name = "CarParticleEmitter" emitter.Texture = "http://www.roblox.com/asset/?id=14753139051" emitter.Rate = 55 emitter.Speed = NumberRange.new(30, 40) emitter.Lifetime = NumberRange.new(2, 3) emitter.RotSpeed = NumberRange.new(0, 0) emitter.Rotation = NumberRange.new(-360, 360) emitter.Acceleration = Vector3.new(0, 30, 0) emitter.Drag = 7 emitter.ZOffset = 1 emitter.Color = ColorSequence.new(Color3.fromRGB(86, 86, 86)) emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0, 0), NumberSequenceKeypoint.new(0.652, 6.681, 2), NumberSequenceKeypoint.new(0.854, 8.500, 1.5), NumberSequenceKeypoint.new(1, 10, 0),}) emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.049, 0.75), NumberSequenceKeypoint.new(1, 1),}) emitter.EmissionDirection = Enum.NormalId.Left emitter.Orientation = Enum.ParticleOrientation.FacingCamera emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4 emitter.FlipbookFramerate = NumberRange.new(1.05, 1.05) emitter.FlipbookMode = Enum.ParticleFlipbookMode.OneShot emitter.Brightness = 1.25 emitter.Shape = Enum.ParticleEmitterShape.Box emitter.Enabled = true emitter.Parent = offsetPart end function Drive.EmergencyAlertFx() if alertBusy then return end alertBusy = true for _, inst in ipairs(alertParts) do if inst and inst.Parent then inst:Destroy() end end alertParts = {} local currentCar = getCar() if not currentCar then alertBusy = false return end local attachTo = currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart") if not attachTo then alertBusy = false return end local lightPart = Instance.new("Part") lightPart.Name = "TempRedLightPart" lightPart.Size = Vector3.new(1, 1, 1) lightPart.Transparency = 1 lightPart.CanCollide = false lightPart.Anchored = false lightPart.CFrame = attachTo.CFrame * CFrame.new(1, 2, 3) lightPart.Parent = currentCar table.insert(alertParts, lightPart) local weld = Instance.new("WeldConstraint") weld.Part0 = attachTo weld.Part1 = lightPart weld.Parent = lightPart table.insert(alertParts, weld) local light = Instance.new("PointLight") light.Color = Color3.fromRGB(255, 0, 0) light.Range = 15 light.Brightness = 3 light.Parent = lightPart table.insert(alertParts, light) local function playTemp(id: string) local sound = Instance.new("Sound") sound.SoundId = id sound.Volume = 1 sound.Parent = attachTo sound:Play() sound.Ended:Connect(function() sound:Destroy() end) table.insert(alertParts, sound) end playTemp(ALERT_SOUND_1) playTemp(ALERT_SOUND_2) task.delay(1.5, function() for _, inst in ipairs(alertParts) do if inst and inst.Parent then inst:Destroy() end end alertParts = {} alertBusy = false end) end function Drive.GetVelocity(): Vector3 return velocity end function Drive.ApplyWheelRoll() applyWheelRoll() end function Drive.IsRotatingTires(): boolean return rotatingTires end function Drive.GetTireSpin(): number if rotatingTires then return wheelRollAngle end return 0 end function Drive.RotatingTires(enable: boolean) rotatingTires = enable and true or false if tireSpinConn then tireSpinConn:Disconnect() tireSpinConn = nil end if not rotatingTires then return end captureWheelData() tireSpinConn = RunService.Heartbeat:Connect(function(dt) if not rotatingTires then return end if not driving then wheelRollAngle += velocity.Magnitude * dt * 25 end applyWheelRoll() end) end local function rotationFromDegrees(rx: number?, ry: number?, rz: number?): CFrame return CFrame.Angles(math.rad(rx or 0), math.rad(ry or 0), math.rad(rz or 0)) end local function moveCarTo(target: CFrame) local currentCar = getCar() if not currentCar then return end local primaryPart = currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart") if not primaryPart then return end local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if root then local rel = primaryPart.CFrame:ToObjectSpace(root.CFrame) root.CFrame = target * rel end setModelCFrame(currentCar, target) if CarAttach and CarAttach.RecaptureOffsets then CarAttach.RecaptureOffsets() end if rotatingTires then captureWheelData() end end function Drive.CarCframeTp(x: number, y: number, z: number, rx: number?, ry: number?, rz: number?) local currentCar = getCar() local primaryPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart")) if not primaryPart then return end local extra = rotationFromDegrees(rx, ry, rz) local useNewRotation = rx ~= nil or ry ~= nil or rz ~= nil local rotation = if useNewRotation then extra else primaryPart.CFrame.Rotation moveCarTo(CFrame.new(x, y, z) * rotation) end function Drive.CarCframeTp2(x: number, y: number, z: number, rx: number?, ry: number?, rz: number?) local currentCar = getCar() local primaryPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart")) if not primaryPart then return end local extra = rotationFromDegrees(rx, ry, rz) moveCarTo(CFrame.new(primaryPart.Position + Vector3.new(x, y, z)) * (primaryPart.CFrame.Rotation * extra)) end function Drive.TiresCframeTp(x: number, y: number, z: number, rx: number?, ry: number?, rz: number?) return function(index: number) local wheel = getWheel(index) if not wheel then return end local extra = rotationFromDegrees(rx, ry, rz) wheel.CFrame = CFrame.new(wheel.Position + Vector3.new(x, y, z)) * (wheel.CFrame.Rotation * extra) if CarAttach and CarAttach.SetPartOffset then CarAttach.SetPartOffset(wheel) end if rotatingTires then captureWheelData() end end end end end
+-- Car attach functionality --
+do CarAttach = {} do local startingUp = false local startupConn: RBXScriptConnection? = nil local locked = false local lockConn: RBXScriptConnection? = nil local lockRoot: BasePart? = nil local lockParts = {} local lockOffsets = {} local savedHumanoid: Humanoid? = nil local savedSubject = nil local savedCameraType = nil local savedJumpPower = 0 local savedJumpHeight = 0 local savedUseJumpPower = false local function randomUnit(): Vector3 local theta = math.random() * math.pi * 2 local phi = math.acos(2 * math.random() - 1) return Vector3.new(math.sin(phi) * math.cos(theta), math.sin(phi) * math.sin(theta), math.cos(phi)) end function CarAttach.CharacterCarUnlock() if not locked then return end locked = false if lockConn then lockConn:Disconnect() lockConn = nil end if savedHumanoid then savedHumanoid.JumpPower = savedJumpPower savedHumanoid.JumpHeight = savedJumpHeight savedHumanoid.UseJumpPower = savedUseJumpPower savedHumanoid = nil end local camera = Workspace.CurrentCamera if camera then if savedSubject then camera.CameraSubject = savedSubject end if savedCameraType then camera.CameraType = savedCameraType end end savedSubject = nil savedCameraType = nil lockRoot = nil lockParts = {} lockOffsets = {} end function CarAttach.IsLocked(): boolean return locked end function CarAttach.RecaptureOffsets() if not locked or not lockRoot then return end local spin = 0 if Drive.GetTireSpin then spin = Drive.GetTireSpin() end for _, part in ipairs(lockParts) do if part.Parent then local cf = part.CFrame if isWheelPart(part) and spin ~= 0 then cf = cf * CFrame.Angles(-spin, 0, 0) end lockOffsets[part] = lockRoot.CFrame:ToObjectSpace(cf) end end end function CarAttach.SetPartOffset(part: BasePart) if not locked or not lockRoot or not part then return end local cf = part.CFrame local spin = 0 if Drive.GetTireSpin then spin = Drive.GetTireSpin() end if isWheelPart(part) and spin ~= 0 then cf = cf * CFrame.Angles(-spin, 0, 0) end lockOffsets[part] = lockRoot.CFrame:ToObjectSpace(cf) end function CarAttach.CharacterCarLock() if locked then return end local char = Character if not char then return end local humanoid = char:FindFirstChildOfClass("Humanoid") local root = char:FindFirstChild("HumanoidRootPart") if not humanoid or not root then return end local car = getCar() if not car then return end local primary = car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart") if not primary then return end local carParts = {} for _, inst in ipairs(car:GetDescendants()) do if inst:IsA("BasePart") then table.insert(carParts, inst) end end local camera = Workspace.CurrentCamera local head = char:FindFirstChild("Head") savedHumanoid = humanoid savedSubject = camera.CameraSubject savedCameraType = camera.CameraType savedJumpPower = humanoid.JumpPower savedJumpHeight = humanoid.JumpHeight savedUseJumpPower = humanoid.UseJumpPower humanoid.JumpPower = 0 humanoid.JumpHeight = 0 humanoid.UseJumpPower = false if head and camera.CameraType ~= Enum.CameraType.Fixed then camera.CameraSubject = head camera.CameraType = Enum.CameraType.Custom end locked = true lockRoot = root lockParts = carParts lockOffsets = {} for _, part in ipairs(carParts) do lockOffsets[part] = root.CFrame:ToObjectSpace(part.CFrame) end lockConn = RunService.Heartbeat:Connect(function() if not locked then if lockConn then lockConn:Disconnect() lockConn = nil end return end if not char.Parent or not root.Parent or not car.Parent then CarAttach.CharacterCarUnlock() return end zeroVelocities(car) local now = root.CFrame local skipWheels = (Drive.IsRotatingTires and Drive.IsRotatingTires()) or (Drive.IsHoverWheels and Drive.IsHoverWheels()) or Drive._orbiting for _, part in ipairs(lockParts) do local isOrbitPart=false for _,unit in ipairs(Drive._orbitUnits or {}) do if unit.part==part then isOrbitPart=true break end end if isOrbitPart or part==Drive._orbitWheel then continue end local offset = lockOffsets[part] if offset then if not (skipWheels and isWheelPart(part)) then part.CFrame = now * offset end end end if skipWheels and Drive.ApplyWheelRoll then Drive.ApplyWheelRoll() end end) end function CarAttach.StartUpCar(onDone: (() -> ())?) if startingUp then return end startingUp = true local char = Character if not char then startingUp = false if onDone then onDone() end return end local humanoid = char:FindFirstChildOfClass("Humanoid") local root = char:FindFirstChild("HumanoidRootPart") if not humanoid or not root then startingUp = false if onDone then onDone() end return end local car = getCar() if not car then startingUp = false if onDone then onDone() end return end local primary = car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart") if not primary then startingUp = false if onDone then onDone() end return end CarAttach.CharacterCarLock() local carParts = {} for _, inst in ipairs(car:GetDescendants()) do if inst:IsA("BasePart") then table.insert(carParts, inst) end end local abilityEvent = ReplicatedStorage:FindFirstChild("GeneralAbility") local anchor = Instance.new("Part") anchor.Size = Vector3.new(1, 1, 1) anchor.Anchored = true anchor.CanCollide = false anchor.Transparency = 1 anchor.Position = root.Position anchor.Parent = Workspace local rotationOnly = root.CFrame - root.CFrame.Position local offsets = {} for _, part in ipairs(carParts) do offsets[part] = root.CFrame:ToObjectSpace(part.CFrame) end for _ = 1, 5 do pcall(function() if abilityEvent and abilityEvent:IsA("RemoteEvent") then abilityEvent:FireServer("equip") end end) task.wait(0.05) end local duration = 2.5 local elapsed = 0 startupConn = RunService.Heartbeat:Connect(function(dt) if not startingUp then if startupConn then startupConn:Disconnect() startupConn = nil end return end elapsed += dt if elapsed >= duration then startingUp = false if startupConn then startupConn:Disconnect() startupConn = nil end anchor:Destroy() if onDone then onDone() end return end local shake = 1 - (elapsed / duration) * 0.5 zeroVelocities(car) local nextCf = CFrame.new(anchor.Position + randomUnit() * shake) * rotationOnly root.CFrame = nextCf for _, part in ipairs(carParts) do local offset = offsets[part] if offset then part.CFrame = nextCf * offset end end end) end end end
+-- Hitboxes --
+do Hitboxes = {} do local active = {} local nextId = 0 local followConn: RBXScriptConnection? = nil local detectConn: RBXScriptConnection? = nil local function stopLoopsIfEmpty() if next(active) then return end if followConn then followConn:Disconnect() followConn = nil end if detectConn then detectConn:Disconnect() detectConn = nil end end local function updateFollow() if not next(active) then stopLoopsIfEmpty() return end local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return end local rootCf = root.CFrame for _, data in pairs(active) do local box = data.Hitbox if box and box.Parent then local offset = data.Offset local world = rootCf.RightVector * offset.X + rootCf.UpVector * offset.Y + rootCf.LookVector * -offset.Z box.CFrame = CFrame.new(root.Position + world) * rootCf.Rotation end end end local function spawnHitParticles(part: BasePart) task.spawn(function() if not part or not part.Parent then return end local emitter = Instance.new("ParticleEmitter") emitter.Texture = "rbxassetid://4150730830" emitter.Rate = 20 emitter.Speed = NumberRange.new(5, 5) emitter.Lifetime = NumberRange.new(0.25, 0.25) emitter.Rotation = NumberRange.new(-100, 100) emitter.LightEmission = 0.5 emitter.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)) emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.2, 7.5), NumberSequenceKeypoint.new(1, 0),}) emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.101, 0.1), NumberSequenceKeypoint.new(0.9, 0.1), NumberSequenceKeypoint.new(1, 1),}) emitter.EmissionDirection = Enum.NormalId.Top emitter.Orientation = Enum.ParticleOrientation.FacingCamera emitter.Enabled = true emitter.Parent = part task.wait(0.15) emitter.Enabled = false task.wait(0.5) emitter:Destroy() end) end local function spawnScreenFlash(r: number, g: number, b: number, duration: number) task.spawn(function() local gui = Instance.new("ScreenGui") gui.Name = "HitFlashGui" gui.ResetOnSpawn = false gui.IgnoreGuiInset = true gui.Parent = PlayerGui local frame = Instance.new("Frame") frame.Position = UDim2.new(-0.5, 0, -0.5, 0) frame.Size = UDim2.new(2, 0, 2, 0) frame.BackgroundColor3 = Color3.fromRGB(r, g, b) frame.BackgroundTransparency = 0.5 frame.BorderSizePixel = 0 frame.Parent = gui local tween = TweenService:Create(frame, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1,}) tween:Play() tween.Completed:Wait() gui:Destroy() end) end function Hitboxes.HitEffect(part: BasePart, r: number, g: number, b: number, duration: number) spawnHitParticles(part) spawnScreenFlash(r, g, b, duration) end function Hitboxes.ScreenFlash(r: number, g: number, b: number, duration: number) spawnScreenFlash(r, g, b, duration) end local function detectHits() local char = LocalPlayer.Character if not char then return end local now = tick() for name, data in pairs(active) do local box = data.Hitbox if not box or not box.Parent then active[name] = nil continue end for _, part in ipairs(Workspace:GetPartsInPart(box, data.OverlapParams)) do if string.lower(part.Name) == "humanoidrootpart" then local target = part.Parent if target and target ~= LocalPlayer.Character then local humanoid = target:FindFirstChildOfClass("Humanoid") if humanoid and humanoid.Health > 0 then if not data.CooldownTable[target] or (now - data.CooldownTable[target]) >= data.Cooldown then data.CooldownTable[target] = now if data.TouchExecution then data.TouchExecution(part) end end end end end end end end local function removeHitbox(name: string) local data = active[name] if not data then return end if data.ExpireThread then task.cancel(data.ExpireThread) data.ExpireThread = nil end if data.Hitbox and data.Hitbox.Parent then data.Hitbox:Destroy() end active[name] = nil stopLoopsIfEmpty() end function Hitboxes.AddHitbox(config: {Offset: Vector3, Size: Vector3, HitCooldown: number?, Duration: number?, TouchExecution: ((part: BasePart) -> ())?,}): string? local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not root then return nil end nextId += 1 local name = "HitboxCar_" .. nextId local box = Instance.new("Part") box.Name = "HitboxCar" box.Size = config.Size or Vector3.new(8, 8, 8) box.Color = Color3.fromRGB(255, 0, 0) box.Transparency = 0.5 box.CanCollide = false box.Anchored = true box.Material = Enum.Material.ForceField box.Parent = Workspace local offset = config.Offset or Vector3.zero local rootCf = root.CFrame local world = rootCf.RightVector * offset.X + rootCf.UpVector * offset.Y + rootCf.LookVector * -offset.Z box.CFrame = CFrame.new(root.Position + world) * rootCf.Rotation local params = OverlapParams.new() params.FilterType = Enum.RaycastFilterType.Exclude params.FilterDescendantsInstances = {char, box} active[name] = {Hitbox = box, Offset = offset, Cooldown = config.HitCooldown or 1, CooldownTable = {}, TouchExecution = config.TouchExecution or function() end, OverlapParams = params, ExpireThread = nil,} local duration = config.Duration if typeof(duration) == "number" and duration > 0 then active[name].ExpireThread = task.delay(duration, function() removeHitbox(name) end) end if not followConn then followConn = RunService.Heartbeat:Connect(updateFollow) end if not detectConn then detectConn = RunService.Heartbeat:Connect(detectHits) end return name end function Hitboxes.RemoveHitbox(name: string) removeHitbox(name) end function Hitboxes.DestroyHitboxes() for name, data in pairs(active) do if data.ExpireThread then task.cancel(data.ExpireThread) data.ExpireThread = nil end if data.Hitbox and data.Hitbox.Parent then data.Hitbox:Destroy() end active[name] = nil end active = {} nextId = 0 stopLoopsIfEmpty() end function Hitboxes.PlayS(soundId: string, volume: number?, timePosition: number?) playOneShot(soundId, volume, timePosition) end task.spawn(function() while true do task.wait(0.5) if not LocalPlayer.Parent then Hitboxes.DestroyHitboxes() break end end end) end end
+-- Fuel bar --
+do FuelBar = {} do local ui = {Gui = nil :: ScreenGui?, BarBackground = nil :: Frame?, FillBar = nil :: Frame?, FlashFrame = nil :: Frame?, FuelText = nil :: TextLabel?, BarFlashFrame = nil :: Frame?, StartPos = UDim2.new(1.2, 0, 0.5, 0), TargetPos = UDim2.new(0.98, 0, 0.5, 0),} local sliding = false local fuel = 1 local fuelTween: Tween? = nil local emptyFired = false local draining = false local drainRate = 0 local drainConn: RBXScriptConnection? = nil local shaking = false local shakeConn: RBXScriptConnection? = nil local shakeBase = UDim2.new(0.98, 0, 0.5, 0) local emptyHandler = {Execution = function() FuelBar.BarFlash(Color3.fromRGB(255, 0, 0), 0.3) task.wait(1) FuelBar.SlideOut() end,} local function ensureGui() if ui.Gui and ui.Gui.Parent then return ui end local gui = Instance.new("ScreenGui") gui.Name = "FillBarGui" gui.ResetOnSpawn = false gui.Parent = PlayerGui local background = Instance.new("Frame") background.Name = "BarBackground" background.Size = UDim2.fromScale(0.05, 0.75) background.AnchorPoint = Vector2.new(1, 0.5) background.Position = ui.StartPos background.BackgroundColor3 = Color3.fromRGB(50, 50, 50) background.Parent = gui local corner = Instance.new("UICorner") corner.CornerRadius = UDim.new(0, 12) corner.Parent = background local stroke = Instance.new("UIStroke") stroke.Thickness = 3 stroke.Color = Color3.fromRGB(0, 0, 0) stroke.Parent = background local texture = Instance.new("ImageLabel") texture.Name = "TextureOverlay" texture.Size = UDim2.fromScale(1, 1) texture.BackgroundTransparency = 1 texture.Image = "rbxassetid://86679746929863" texture.ImageTransparency = 0.9 texture.ScaleType = Enum.ScaleType.Tile texture.TileSize = UDim2.fromOffset(25, 25) texture.ZIndex = 3 texture.Parent = background local fill = Instance.new("Frame") fill.Name = "FillBar" fill.Size = UDim2.fromScale(1, 1) fill.AnchorPoint = Vector2.new(0, 1) fill.Position = UDim2.fromScale(0, 1) fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255) fill.BorderSizePixel = 0 fill.ZIndex = 2 fill.Parent = background local fillCorner = Instance.new("UICorner") fillCorner.CornerRadius = UDim.new(0, 12) fillCorner.Parent = fill local gradient = Instance.new("UIGradient") gradient.Rotation = 90 gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 0)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 128, 0)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),}) gradient.Parent = fill local flash = Instance.new("Frame") flash.Name = "FlashOverlay" flash.Size = UDim2.fromScale(1, 1) flash.BackgroundTransparency = 1 flash.BorderSizePixel = 0 flash.ZIndex = 3 flash.Parent = fill Instance.new("UICorner", flash).CornerRadius = UDim.new(0, 12) local barFlash = Instance.new("Frame") barFlash.Name = "BarFlashOverlay" barFlash.Size = UDim2.fromScale(1, 1) barFlash.BackgroundTransparency = 1 barFlash.BorderSizePixel = 0 barFlash.ZIndex = 4 barFlash.Parent = background Instance.new("UICorner", barFlash).CornerRadius = UDim.new(0, 12) local label = Instance.new("TextLabel") label.Name = "FuelLabel" label.Size = UDim2.new(2, 0, 0, 28) label.AnchorPoint = Vector2.new(0.5, 1) label.Position = UDim2.new(0.5, 0, 0, -8) label.BackgroundTransparency = 1 label.Text = "Fuel" label.TextColor3 = Color3.fromRGB(255, 255, 255) label.Font = Enum.Font.FredokaOne label.TextScaled = true label.ZIndex = 4 label.Parent = background local labelStroke = Instance.new("UIStroke") labelStroke.Thickness = 2 labelStroke.Color = Color3.fromRGB(0, 0, 0) labelStroke.Parent = label ui.Gui = gui ui.BarBackground = background ui.FillBar = fill ui.FlashFrame = flash ui.FuelText = label ui.BarFlashFrame = barFlash shakeBase = ui.TargetPos return ui end local function fireEmpty() if emptyFired then return end emptyFired = true task.spawn(emptyHandler.Execution) end function FuelBar.Create() return ensureGui() end function FuelBar.SlideIn(onDone: (() -> ())?) emptyFired = false ensureGui() if not ui.BarBackground or sliding then return end local pos = ui.BarBackground.Position if pos == ui.TargetPos then if onDone then onDone() end return end sliding = true ui.BarBackground.Position = ui.StartPos local tween = TweenService:Create(ui.BarBackground, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = ui.TargetPos,}) tween:Play() tween.Completed:Connect(function() sliding = false if onDone then onDone() end end) end function FuelBar.StopDraining() draining = false if drainConn then drainConn:Disconnect() drainConn = nil end end function FuelBar.BarShaking(enable: boolean) if enable then if shaking or not ui.BarBackground then return end shaking = true shakeBase = ui.BarBackground.Position shakeConn = RunService.Heartbeat:Connect(function() if not shaking or not ui.BarBackground then return end ui.BarBackground.Position = shakeBase + UDim2.fromOffset(math.random(-6, 6), math.random(-6, 6)) end) else shaking = false if shakeConn then shakeConn:Disconnect() shakeConn = nil end if ui.BarBackground then ui.BarBackground.Position = shakeBase end end end function FuelBar.SlideOut(onDone: (() -> ())?) FuelBar.StopDraining() FuelBar.BarShaking(false) if not ui.Gui or not ui.Gui.Parent then if onDone then onDone() end return end if not ui.BarBackground then ui.Gui:Destroy() ui.Gui = nil if onDone then onDone() end return end if sliding then return end if ui.BarBackground.Position == ui.StartPos then ui.Gui:Destroy() ui.Gui = nil ui.BarBackground = nil ui.FillBar = nil ui.FlashFrame = nil ui.FuelText = nil ui.BarFlashFrame = nil if onDone then onDone() end return end sliding = true local tween = TweenService:Create(ui.BarBackground, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = ui.StartPos,}) tween:Play() tween.Completed:Connect(function() sliding = false if ui.Gui then ui.Gui:Destroy() end ui.Gui = nil ui.BarBackground = nil ui.FillBar = nil ui.FlashFrame = nil ui.FuelText = nil ui.BarFlashFrame = nil if onDone then onDone() end end) end function FuelBar.FuelFlash(color: Color3, duration: number) if not ui.FlashFrame then return end task.spawn(function() ui.FlashFrame.BackgroundColor3 = color local fadeIn = TweenService:Create(ui.FlashFrame, TweenInfo.new(duration * 0.3), {BackgroundTransparency = 0.2}) fadeIn:Play() fadeIn.Completed:Wait() TweenService:Create(ui.FlashFrame, TweenInfo.new(duration * 0.7), {BackgroundTransparency = 1}):Play() end) end function FuelBar.BarFlash(color: Color3, duration: number) if not ui.BarFlashFrame then return end task.spawn(function() ui.BarFlashFrame.BackgroundColor3 = color local fadeIn = TweenService:Create(ui.BarFlashFrame, TweenInfo.new(duration * 0.3), {BackgroundTransparency = 0.3}) fadeIn:Play() fadeIn.Completed:Wait() TweenService:Create(ui.BarFlashFrame, TweenInfo.new(duration * 0.7), {BackgroundTransparency = 1}):Play() end) end function FuelBar.SetFuel(percent: number) local target = math.clamp(percent, 0, 1) fuel = target if ui.FillBar then ui.FillBar.Size = UDim2.fromScale(1, target) end if target == 0 then fireEmpty() else emptyFired = false end end function FuelBar.ForceEmpty() emptyFired = false fireEmpty() if ui.FillBar then ui.FillBar.Size = UDim2.fromScale(1, 0) end fuel = 0 end function FuelBar.GetFuel(): number return fuel end function FuelBar.ConsumeFuel(amount: number) if not ui.FillBar then return false end local remove = math.clamp(tonumber(amount) or 0, 0, 1) if remove <= 0 then return true end if fuel < remove then return false end if fuelTween then fuelTween:Cancel() fuelTween = nil end fuel = math.max(0, fuel - remove) emptyFired = fuel <= 0 ui.FillBar.Size = UDim2.fromScale(1, fuel) if fuel <= 0 then fireEmpty() end return true end function FuelBar.FuelChange(percent: number, duration: number?) if fuelTween then fuelTween:Cancel() fuelTween = nil end if not ui.FillBar then return end local target = math.clamp(percent, 0, 1) if fuel == target then return end if target > 0 then emptyFired = false end local tweenDur = duration or 0.5 fuelTween = TweenService:Create(ui.FillBar, TweenInfo.new(tweenDur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.fromScale(1, target),}) fuelTween:Play() fuelTween.Completed:Connect(function() fuel = target fuelTween = nil if target == 0 then fireEmpty() end end) end function FuelBar.Exists(): boolean return ui.Gui ~= nil and ui.Gui.Parent ~= nil end function FuelBar.FuelEmpty(config: {Execution: (() -> ())?}) if config and config.Execution then emptyHandler.Execution = config.Execution end end function FuelBar.SetFuelEmptyHandler(handler: () -> ()) emptyHandler.Execution = handler end function FuelBar.StartDraining(rate: number) FuelBar.StopDraining() drainRate = math.clamp(rate, 0, 1) if drainRate <= 0 then return end draining = true drainConn = RunService.Heartbeat:Connect(function(dt) if not draining or not ui.FillBar then return end local nextFuel = math.max(0, fuel - drainRate * dt) fuel = nextFuel ui.FillBar.Size = UDim2.fromScale(1, nextFuel) if nextFuel == 0 then FuelBar.StopDraining() fireEmpty() end end) end function FuelBar.AddFuel(amount: number | string, duration: number?) if fuelTween then fuelTween:Cancel() fuelTween = nil end if not ui.FillBar then return end local add = 0 if typeof(amount) == "string" then local cleaned = string.gsub(amount, "%%", "") add = (tonumber(cleaned) or 0) / 100 else add = amount :: number end add = math.clamp(add, 0, 1) local nextFuel = math.min(1, fuel + add) if nextFuel == fuel then return end emptyFired = false local tweenDur = duration or 0.3 fuelTween = TweenService:Create(ui.FillBar, TweenInfo.new(tweenDur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.fromScale(1, nextFuel),}) fuelTween:Play() fuelTween.Completed:Connect(function() fuel = nextFuel fuelTween = nil end) FuelBar.FuelFlash(Color3.fromRGB(0, 255, 0), 0.3) end end end
+-- Score --
+do Score = {} do local scoreGui: ScreenGui? = nil local scoreLabel: TextLabel? = nil local scoreStroke: UIStroke? = nil local scoreValue = 0 local flying = false local shownPos = UDim2.new(0.3, 0, 0.85, 0) local hiddenPos = UDim2.new(0.3, 0, 1.5, 0) local defaultText = Color3.fromRGB(255, 255, 255) local defaultStroke = Color3.fromRGB(0, 0, 0) local flashGui: ScreenGui? = nil local flashLabel: TextLabel? = nil local flashStroke: UIStroke? = nil local flashTask: thread? = nil local flashProps = {TR = 255, TG = 255, TB = 255, OR = 255, OG = 255, OB = 255, DU = 0.5, EN = false,} local wobble = {running = false, thread = nil :: thread?, spinThread = nil :: thread?, angle = 15, duration = 1,} local textGradient: UIGradient? = nil local textGradientConn: RBXScriptConnection? = nil local outlineGradient: UIGradient? = nil local outlineGradientConn: RBXScriptConnection? = nil local colorAnim = {textQueue = {}, outlineQueue = {}, textMemory = {}, outlineMemory = {}, textCurrent = nil, outlineCurrent = nil, textProgress = 0, outlineProgress = 0, textStart = nil, outlineStart = nil, textRunning = false, outlineRunning = false, textLoop = false, outlineLoop = false,} local notif = {labels = {}, spacing = 0.075, baseY = 0.85, lifetime = 5, gui = nil :: ScreenGui?,} local milestones = {} local currentMilestone = nil local milestoneFlashLock = false local function labelAlive(): boolean return scoreLabel ~= nil and scoreLabel.Parent ~= nil end local function stopWobble() wobble.running = false if wobble.thread then task.cancel(wobble.thread) wobble.thread = nil end end local function stopOutlineGradient() if outlineGradientConn then outlineGradientConn:Disconnect() outlineGradientConn = nil end if outlineGradient then outlineGradient:Destroy() outlineGradient = nil end if scoreStroke then local existing = scoreStroke:FindFirstChild("OutlineGradient") if existing then existing:Destroy() end end end local function stopTextGradient() if textGradientConn then textGradientConn:Disconnect() textGradientConn = nil end if textGradient then textGradient:Destroy() textGradient = nil end stopOutlineGradient() if scoreLabel then local existing = scoreLabel:FindFirstChild("TextGradient") if existing then existing:Destroy() end end end local function stopColorAnims() colorAnim.textRunning = false colorAnim.outlineRunning = false colorAnim.textQueue = {} colorAnim.outlineQueue = {} colorAnim.textMemory = {} colorAnim.outlineMemory = {} colorAnim.textCurrent = nil colorAnim.outlineCurrent = nil colorAnim.textLoop = false colorAnim.outlineLoop = false stopOutlineGradient() end local function stopScoreVisuals() stopTextGradient() stopColorAnims() stopOutlineGradient() stopWobble() end local function ensureFlashOverlay() if flashGui and flashGui.Parent then return end if not scoreLabel then return end flashGui = Instance.new("ScreenGui") flashGui.Name = "FlashOverlayGui" flashGui.ResetOnSpawn = false flashGui.Enabled = false flashGui.Parent = PlayerGui flashLabel = Instance.new("TextLabel") flashLabel.Name = "FlashTextLabel" flashLabel.Size = scoreLabel.Size flashLabel.Position = scoreLabel.Position flashLabel.AnchorPoint = scoreLabel.AnchorPoint flashLabel.BackgroundTransparency = 1 flashLabel.Font = scoreLabel.Font flashLabel.TextSize = scoreLabel.TextSize flashLabel.TextColor3 = Color3.fromRGB(255, 255, 255) flashLabel.Text = scoreLabel.Text flashLabel.TextScaled = scoreLabel.TextScaled flashLabel.Parent = flashGui flashStroke = Instance.new("UIStroke") flashStroke.Thickness = 2 flashStroke.Color = Color3.fromRGB(255, 255, 255) flashStroke.Parent = flashLabel end local function syncFlashOverlay() if not flashLabel or not flashLabel.Parent then ensureFlashOverlay() end if not scoreLabel or not flashLabel then return end flashLabel.Size = scoreLabel.Size flashLabel.Position = scoreLabel.Position flashLabel.AnchorPoint = scoreLabel.AnchorPoint flashLabel.Font = scoreLabel.Font flashLabel.TextSize = scoreLabel.TextSize flashLabel.TextScaled = scoreLabel.TextScaled flashLabel.Text = scoreLabel.Text flashLabel.Rotation = scoreLabel.Rotation end local function playTextFlash(tr, tg, tb, orr, og, ob, duration) ensureFlashOverlay() if not flashGui or not flashLabel then return end if flashTask then task.cancel(flashTask) flashTask = nil end syncFlashOverlay() flashLabel.TextColor3 = Color3.fromRGB(tr, tg, tb) if flashStroke then flashStroke.Color = Color3.fromRGB(orr, og, ob) flashStroke.Transparency = 0 end flashLabel.TextTransparency = 0 flashGui.Enabled = true local dur = duration or 0.5 local started = tick() flashTask = task.spawn(function() while tick() - started < dur do local alpha = (tick() - started) / dur local eased = alpha * alpha * (3 - 2 * alpha) if flashLabel then flashLabel.TextTransparency = eased end if flashStroke then flashStroke.Transparency = eased end task.wait() end if flashLabel then flashLabel.TextTransparency = 1 end if flashStroke then flashStroke.Transparency = 1 end if flashGui then flashGui.Enabled = false end flashTask = nil end) end local function startWobble() stopWobble() if not labelAlive() then return end wobble.running = true local duration = wobble.duration or 1 local angle = wobble.angle or 15 wobble.thread = task.spawn(function() while wobble.running and labelAlive() do local from = scoreLabel.Rotation local started = tick() while tick() - started < duration and wobble.running and labelAlive() do local alpha = (tick() - started) / duration local eased = alpha * alpha * (3 - 2 * alpha) scoreLabel.Rotation = from + (angle - from) * eased if flashGui and flashGui.Enabled then syncFlashOverlay() end task.wait() end if wobble.running and labelAlive() then scoreLabel.Rotation = angle if flashGui and flashGui.Enabled then syncFlashOverlay() end end if not (wobble.running and labelAlive()) then break end from = scoreLabel.Rotation started = tick() while tick() - started < duration and wobble.running and labelAlive() do local alpha = (tick() - started) / duration local eased = alpha * alpha * (3 - 2 * alpha) scoreLabel.Rotation = from + (-angle - from) * eased if flashGui and flashGui.Enabled then syncFlashOverlay() end task.wait() end if wobble.running and labelAlive() then scoreLabel.Rotation = -angle if flashGui and flashGui.Enabled then syncFlashOverlay() end end end end) end local function spinOnce(duration: number) if not labelAlive() then return end if wobble.spinThread then task.cancel(wobble.spinThread) wobble.spinThread = nil end if wobble.thread then task.cancel(wobble.thread) wobble.thread = nil end scoreLabel.Rotation = 0 if flashGui and flashGui.Enabled then syncFlashOverlay() end wobble.spinThread = task.spawn(function() local started = tick() local dur = duration or 0.5 while tick() - started < dur and labelAlive() do local alpha = (tick() - started) / dur local eased = 1 - (1 - alpha) * (1 - alpha) scoreLabel.Rotation = 360 * eased if flashGui and flashGui.Enabled then syncFlashOverlay() end task.wait() end if labelAlive() then scoreLabel.Rotation = 0 if flashGui and flashGui.Enabled then syncFlashOverlay() end end wobble.spinThread = nil if wobble.running then task.wait(0.05) startWobble() end end) end local function ensureScoreGui() if scoreGui and scoreGui.Parent then return end scoreGui = Instance.new("ScreenGui") scoreGui.Name = "ScoreMeterGui" scoreGui.ResetOnSpawn = false scoreGui.Parent = PlayerGui scoreLabel = Instance.new("TextLabel") scoreLabel.Name = "ScoreLabel" scoreLabel.Size = UDim2.new(0, 200, 0, 40) scoreLabel.Position = hiddenPos scoreLabel.AnchorPoint = Vector2.new(0.5, 0.5) scoreLabel.BackgroundTransparency = 1 scoreLabel.Font = Enum.Font.FredokaOne scoreLabel.TextSize = 25 scoreLabel.TextColor3 = defaultText scoreLabel.Text = "Score: 0" scoreLabel.Parent = scoreGui scoreStroke = Instance.new("UIStroke") scoreStroke.Thickness = 2 scoreStroke.Color = defaultStroke scoreStroke.Parent = scoreLabel ensureFlashOverlay() end local function ensureNotifGui() if notif.gui and notif.gui.Parent then return end notif.gui = Instance.new("ScreenGui") notif.gui.Name = "ScoreNotifGui" notif.gui.ResetOnSpawn = false notif.gui.Parent = PlayerGui end local function updateNotifFade() local count = #notif.labels for i, label in ipairs(notif.labels) do local behind = count - i local transparency = 0 if behind == 3 then transparency = 0.5 elseif behind == 4 then transparency = 0.8 elseif behind >= 5 then transparency = 1 end TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = transparency}):Play() local stroke = label:FindFirstChildOfClass("UIStroke") if stroke then TweenService:Create(stroke, TweenInfo.new(0.3), {Transparency = transparency}):Play() end end end local function layoutNotifs() for i, remain in ipairs(notif.labels) do if remain and remain.Parent then local behind = #notif.labels - i local y = notif.baseY - (behind * notif.spacing) TweenService:Create(remain, TweenInfo.new(0.25), {Position = UDim2.new(0.1, 0, y, 0)}):Play() end end updateNotifFade() end local function removeNotif(label: TextLabel) local index = table.find(notif.labels, label) if index then table.remove(notif.labels, index) end if label and label.Parent then TweenService:Create(label, TweenInfo.new(0.35), {TextTransparency = 1}):Play() local stroke = label:FindFirstChildOfClass("UIStroke") if stroke then TweenService:Create(stroke, TweenInfo.new(0.35), {Transparency = 1}):Play() end task.delay(0.35, function() if label.Parent then label:Destroy() end end) end layoutNotifs() end function Score.ScoreNotif(text: string, amount: number) ensureNotifGui() local amountText = "" local color = Color3.fromRGB(255, 255, 255) if amount > 0 then amountText = "+" .. tostring(amount) elseif amount < 0 then amountText = tostring(amount) color = Color3.fromRGB(255, 0, 0) end local label = Instance.new("TextLabel") label.Size = UDim2.new(0, 300, 0, 25) label.Position = UDim2.new(0.1, 0, 0.9, 0) label.AnchorPoint = Vector2.new(0, 0.5) label.BackgroundTransparency = 1 label.Font = Enum.Font.FredokaOne label.TextSize = 15 label.TextColor3 = color label.Text = text .. " " .. amountText label.TextTransparency = 1 label.TextXAlignment = Enum.TextXAlignment.Left label.Parent = notif.gui local stroke = Instance.new("UIStroke") stroke.Thickness = 2 stroke.Color = Color3.fromRGB(0, 0, 0) stroke.Transparency = 1 stroke.Parent = label table.insert(notif.labels, label) while #notif.labels > 6 do removeNotif(notif.labels[1]) end layoutNotifs() local y = notif.baseY TweenService:Create(label, TweenInfo.new(0.4), {Position = UDim2.new(0.1, 0, y, 0), TextTransparency = 0,}):Play() TweenService:Create(stroke, TweenInfo.new(0.4), {Transparency = 0}):Play() task.spawn(function() task.wait(notif.lifetime) if label.Parent then removeNotif(label) end end) return label end function Score.ClearScoreNotifs() local old=notif.labels notif.labels={} for _, label in ipairs(old) do if label and label.Parent then label:Destroy() end end end function Score.DestroyScoreNotifs() Score.ClearScoreNotifs() if notif.gui then notif.gui:Destroy() notif.gui = nil end end function Score.TextChange(r, g, b, sr, sg, sb) ensureScoreGui() if not scoreLabel then return end stopColorAnims() stopOutlineGradient() scoreLabel.TextColor3 = Color3.fromRGB(r, g, b) if scoreStroke then scoreStroke.Color = Color3.fromRGB(sr, sg, sb) end end function Score.FontChange(font) ensureScoreGui() if scoreLabel then scoreLabel.Font = font end if flashLabel then flashLabel.Font = font end end function Score.ChangeTextFlash(tr, tg, tb, orr, og, ob, duration) flashProps.TR = tr or 255 flashProps.TG = tg or 255 flashProps.TB = tb or 255 flashProps.OR = orr or 255 flashProps.OG = og or 255 flashProps.OB = ob or 255 flashProps.DU = duration or 0.5 flashProps.EN = true end function Score.TextFlash() ensureScoreGui() if flashProps.EN then playTextFlash(flashProps.TR, flashProps.TG, flashProps.TB, flashProps.OR, flashProps.OG, flashProps.OB, flashProps.DU) end end function Score.SpinScore(duration: number?) ensureScoreGui() spinOnce(duration or 0.5) end function Score.PassiveRotating(angle: number, duration: number?) ensureScoreGui() if not labelAlive() then return end if angle and angle > 0 then wobble.angle = angle wobble.duration = duration or 1 startWobble() else stopWobble() scoreLabel.Rotation = 0 end end function Score.StopAnimation() stopScoreVisuals() end function Score.StopColorAnimations() stopColorAnims() end function Score.AnimatedTextColor(colors, loop) ensureScoreGui() colorAnim.textQueue = {} colorAnim.textMemory = {} colorAnim.textRunning = false for _, item in ipairs(colors) do if #item >= 4 then local entry = {R = item[1], G = item[2], B = item[3], DU = item[4]} table.insert(colorAnim.textQueue, entry) table.insert(colorAnim.textMemory, entry) end end colorAnim.textLoop = loop or false if #colorAnim.textQueue > 0 then colorAnim.textRunning = true colorAnim.textCurrent = table.remove(colorAnim.textQueue, 1) colorAnim.textProgress = 0 colorAnim.textStart = scoreLabel.TextColor3 end end function Score.AnimatedTextOutlineColor(colors, loop) ensureScoreGui() if not scoreStroke then return end colorAnim.outlineQueue = {} colorAnim.outlineMemory = {} colorAnim.outlineRunning = false for _, item in ipairs(colors) do if #item >= 4 then local entry = {R = item[1], G = item[2], B = item[3], DU = item[4]} table.insert(colorAnim.outlineQueue, entry) table.insert(colorAnim.outlineMemory, entry) end end colorAnim.outlineLoop = loop or false if #colorAnim.outlineQueue > 0 then colorAnim.outlineRunning = true colorAnim.outlineCurrent = table.remove(colorAnim.outlineQueue, 1) colorAnim.outlineProgress = 0 colorAnim.outlineStart = scoreStroke.Color end end local function startOutlineGradient(milestone) stopOutlineGradient() if not milestone.OutlineGradientColors or #milestone.OutlineGradientColors == 0 or not scoreStroke then return end local gradient = Instance.new("UIGradient") gradient.Name = "OutlineGradient" gradient.Rotation = milestone.OutlineGradientRotation or 0 gradient.Parent = scoreStroke outlineGradient = gradient scoreStroke.Color = Color3.fromRGB(255, 255, 255) local speed = milestone.OutlineGradientSpeed or 1.5 local colors = milestone.OutlineGradientColors outlineGradientConn = RunService.Heartbeat:Connect(function() if not scoreStroke or not scoreGui or not scoreGui.Parent or not gradient.Parent then stopOutlineGradient() return end local function sample(offset) local wrapped = offset % #colors local i1 = math.floor(wrapped) + 1 local i2 = if i1 + 1 > #colors then 1 else i1 + 1 local frac = wrapped - math.floor(wrapped) local c1, c2 = colors[i1], colors[i2] return Color3.fromRGB(c1[1] + (c2[1] - c1[1]) * frac, c1[2] + (c2[2] - c1[2]) * frac, c1[3] + (c2[3] - c1[3]) * frac) end local t = tick() * speed gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, sample(t)), ColorSequenceKeypoint.new(1, sample(t + 0.5)),}) end) end local function applyPlainMilestone(milestone) stopTextGradient() stopColorAnims() stopOutlineGradient() if scoreLabel and scoreLabel:FindFirstChild("TextGradient") then scoreLabel.TextGradient:Destroy() end if milestone.AnimatedTextColor and #milestone.AnimatedTextColor > 0 then Score.AnimatedTextColor(milestone.AnimatedTextColor, true) else scoreLabel.TextColor3 = milestone.TextColor end if milestone.AnimatedTextOutlineColor and #milestone.AnimatedTextOutlineColor > 0 then Score.AnimatedTextOutlineColor(milestone.AnimatedTextOutlineColor, true) elseif scoreStroke then if milestone.OutlineGradientColors and #milestone.OutlineGradientColors > 0 then scoreStroke.Color = Color3.fromRGB(255, 255, 255) startOutlineGradient(milestone) else scoreStroke.Color = milestone.OutlineColor end end if milestone.FontChange then scoreLabel.Font = milestone.FontChange end if milestone.FlashProperties then local fp = milestone.FlashProperties Score.ChangeTextFlash(fp.TR, fp.TG, fp.TB, fp.OR, fp.OG, fp.OB, fp.DU) end end local function applyGradientMilestone(milestone) stopTextGradient() stopColorAnims() stopOutlineGradient() if not milestone.GradientColors or #milestone.GradientColors == 0 or not scoreLabel then return end if scoreLabel:FindFirstChild("TextGradient") then scoreLabel.TextGradient:Destroy() end local gradient = Instance.new("UIGradient") gradient.Name = "TextGradient" gradient.Rotation = milestone.GradientRotation or 0 gradient.Parent = scoreLabel textGradient = gradient scoreLabel.TextColor3 = Color3.fromRGB(255, 255, 255) if scoreStroke then if milestone.OutlineGradientColors and #milestone.OutlineGradientColors > 0 then scoreStroke.Color = Color3.fromRGB(255, 255, 255) startOutlineGradient(milestone) else scoreStroke.Color = milestone.OutlineColor or Color3.fromRGB(255, 255, 255) end end if milestone.FontChange then scoreLabel.Font = milestone.FontChange end if milestone.FlashProperties then local fp = milestone.FlashProperties Score.ChangeTextFlash(fp.TR, fp.TG, fp.TB, fp.OR, fp.OG, fp.OB, fp.DU) end local speed = milestone.GradientSpeed or 1.5 local colors = milestone.GradientColors textGradientConn = RunService.Heartbeat:Connect(function() if not labelAlive() or not scoreGui or not gradient.Parent then stopTextGradient() return end local function sample(offset) local wrapped = offset % #colors local i1 = math.floor(wrapped) + 1 local i2 = if i1 + 1 > #colors then 1 else i1 + 1 local frac = wrapped - math.floor(wrapped) local c1, c2 = colors[i1], colors[i2] return Color3.fromRGB(c1[1] + (c2[1] - c1[1]) * frac, c1[2] + (c2[2] - c1[2]) * frac, c1[3] + (c2[3] - c1[3]) * frac) end local t = tick() * speed gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, sample(t)), ColorSequenceKeypoint.new(1, sample(t + 0.5)),}) end) end local function toColor(value): Color3 if typeof(value) == "Color3" then return value end if type(value) == "table" then if value.R and value.G and value.B and value.R <= 1 then return value end return Color3.fromRGB(value[1], value[2], value[3]) end return Color3.fromRGB(255, 255, 255) end function Score.AddMilestone(config) local gradientColors = nil if config.GradientColors then gradientColors = {} for _, c in ipairs(config.GradientColors) do if type(c) == "table" and #c >= 3 then table.insert(gradientColors, {c[1], c[2], c[3]}) end end end local outlineGradientColors = nil if config.OutlineGradientColors then outlineGradientColors = {} for _, c in ipairs(config.OutlineGradientColors) do if type(c) == "table" and #c >= 3 then table.insert(outlineGradientColors, {c[1], c[2], c[3]}) end end end local flashPropsMilestone = nil if config.FlashTextColor or config.FlashOutlineColor or config.FlashDuration then flashPropsMilestone = {TR = config.FlashTextColor and config.FlashTextColor[1] or 255, TG = config.FlashTextColor and config.FlashTextColor[2] or 255, TB = config.FlashTextColor and config.FlashTextColor[3] or 255, OR = config.FlashOutlineColor and config.FlashOutlineColor[1] or 255, OG = config.FlashOutlineColor and config.FlashOutlineColor[2] or 255, OB = config.FlashOutlineColor and config.FlashOutlineColor[3] or 255, DU = config.FlashDuration or 0.5,} end table.insert(milestones, {Min = config.Min, Max = config.Max, TextColor = toColor(config.TextColor), OutlineColor = toColor(config.OutlineColor), Triggered = false, GradientColors = gradientColors, GradientRotation = config.GradientRotation or 0, GradientSpeed = config.GradientSpeed or 1.5, FontChange = config.FontChange, AnimatedTextColor = config.AnimatedTextColor, AnimatedTextOutlineColor = config.AnimatedTextOutlineColor, FlashProperties = flashPropsMilestone, OutlineGradientColors = outlineGradientColors, OutlineGradientRotation = config.OutlineGradientRotation or 0, OutlineGradientSpeed = config.OutlineGradientSpeed or 1.5,}) table.sort(milestones, function(a, b) return a.Min < b.Min end) end local function applyMilestoneForScore(value: number) local found = nil for _, milestone in ipairs(milestones) do if value >= milestone.Min and value <= milestone.Max then found = milestone break end end if found then if not found.Triggered then found.Triggered = true currentMilestone = found milestoneFlashLock = true if found.GradientColors then applyGradientMilestone(found) else applyPlainMilestone(found) end spinOnce(0.5) task.delay(0.6, function() milestoneFlashLock = false end) elseif currentMilestone ~= found then currentMilestone = found if found.GradientColors then applyGradientMilestone(found) else applyPlainMilestone(found) end end elseif currentMilestone then stopScoreVisuals() currentMilestone = nil Score.TextChange(defaultText.R * 255, defaultText.G * 255, defaultText.B * 255, defaultStroke.R * 255, defaultStroke.G * 255, defaultStroke.B * 255) end end function Score.AddScore(amount: number?) scoreValue += amount or 1 if scoreLabel then scoreLabel.Text = "Score: " .. tostring(scoreValue) if flashLabel then flashLabel.Text = scoreLabel.Text end end applyMilestoneForScore(scoreValue) end function Score.SetScore(newScore: number) local diff = newScore - scoreValue scoreValue = newScore if scoreLabel then scoreLabel.Text = "Score: " .. tostring(scoreValue) if flashLabel then flashLabel.Text = scoreLabel.Text end end applyMilestoneForScore(scoreValue) if diff > 0 then Score.ScoreNotif("+" .. tostring(diff), diff) elseif diff < 0 then Score.ScoreNotif(tostring(diff), diff) end end function Score.ResetScore() scoreValue = 0 if scoreLabel then scoreLabel.Text = "Score: 0" if flashLabel then flashLabel.Text = scoreLabel.Text end end for _, milestone in ipairs(milestones) do milestone.Triggered = false end currentMilestone = nil milestoneFlashLock = false stopScoreVisuals() if scoreLabel then scoreLabel.Rotation = 0 end Score.TextChange(defaultText.R * 255, defaultText.G * 255, defaultText.B * 255, defaultStroke.R * 255, defaultStroke.G * 255, defaultStroke.B * 255) Score.ClearScoreNotifs() end function Score.FlyUp(duration: number?, onDone: (() -> ())?) ensureScoreGui() if not scoreLabel or flying then return end flying = true scoreLabel.Position = hiddenPos local tween = TweenService:Create(scoreLabel, TweenInfo.new(duration or 0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = shownPos,}) tween:Play() tween.Completed:Connect(function() flying = false if onDone then onDone() end end) end function Score.FlyDown(duration: number?, onDone: (() -> ())?) if not scoreGui or not scoreGui.Parent then if onDone then onDone() end return end if not scoreLabel then scoreGui:Destroy() scoreGui = nil if onDone then onDone() end return end if flying then return end flying = true stopWobble() stopScoreVisuals() scoreLabel.Position = shownPos local tween = TweenService:Create(scoreLabel, TweenInfo.new(duration or 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = hiddenPos,}) tween:Play() tween.Completed:Connect(function() flying = false stopWobble() stopScoreVisuals() if scoreGui then scoreGui:Destroy() end scoreGui = nil scoreLabel = nil scoreStroke = nil scoreValue = 0 if flashGui then flashGui:Destroy() flashGui = nil flashLabel = nil flashStroke = nil end Score.DestroyScoreNotifs() if onDone then onDone() end end) end function Score.GetScore(): number return scoreValue end function Score.GetMilestones() return milestones end function Score.GetCurrentMilestone() return currentMilestone end function Score.ResetMilestones() for _, milestone in ipairs(milestones) do milestone.Triggered = false end currentMilestone = nil milestoneFlashLock = false stopScoreVisuals() end RunService.Heartbeat:Connect(function(dt) if colorAnim.textRunning and colorAnim.textCurrent and scoreLabel then colorAnim.textProgress += dt local alpha = colorAnim.textProgress / colorAnim.textCurrent.DU if alpha >= 1 then scoreLabel.TextColor3 = Color3.fromRGB(colorAnim.textCurrent.R, colorAnim.textCurrent.G, colorAnim.textCurrent.B) if #colorAnim.textQueue == 0 and colorAnim.textLoop then for _, item in ipairs(colorAnim.textMemory) do table.insert(colorAnim.textQueue, item) end end if #colorAnim.textQueue > 0 then colorAnim.textCurrent = table.remove(colorAnim.textQueue, 1) colorAnim.textProgress = 0 colorAnim.textStart = scoreLabel.TextColor3 else colorAnim.textRunning = false end else local eased = alpha * alpha * (3 - 2 * alpha) local startColor = colorAnim.textStart local target = colorAnim.textCurrent scoreLabel.TextColor3 = Color3.fromRGB(startColor.R * 255 + (target.R - startColor.R * 255) * eased, startColor.G * 255 + (target.G - startColor.G * 255) * eased, startColor.B * 255 + (target.B - startColor.B * 255) * eased) end end if colorAnim.outlineRunning and colorAnim.outlineCurrent and scoreStroke then colorAnim.outlineProgress += dt local alpha = colorAnim.outlineProgress / colorAnim.outlineCurrent.DU if alpha >= 1 then scoreStroke.Color = Color3.fromRGB(colorAnim.outlineCurrent.R, colorAnim.outlineCurrent.G, colorAnim.outlineCurrent.B) if #colorAnim.outlineQueue == 0 and colorAnim.outlineLoop then for _, item in ipairs(colorAnim.outlineMemory) do table.insert(colorAnim.outlineQueue, item) end end if #colorAnim.outlineQueue > 0 then colorAnim.outlineCurrent = table.remove(colorAnim.outlineQueue, 1) colorAnim.outlineProgress = 0 colorAnim.outlineStart = scoreStroke.Color else colorAnim.outlineRunning = false end else local eased = alpha * alpha * (3 - 2 * alpha) local startColor = colorAnim.outlineStart local target = colorAnim.outlineCurrent scoreStroke.Color = Color3.fromRGB(startColor.R * 255 + (target.R - startColor.R * 255) * eased, startColor.G * 255 + (target.G - startColor.G * 255) * eased, startColor.B * 255 + (target.B - startColor.B * 255) * eased) end end end) end Score.AddMilestone({Min = 0, Max = 499, TextColor = Color3.fromRGB(255, 255, 255), OutlineColor = Color3.fromRGB(0, 0, 0), FlashTextColor = {255, 0, 0}, FlashOutlineColor = {255, 255, 255}, FlashDuration = 0.5,}) Score.AddMilestone({Min = 500, Max = 999, TextColor = {0, 0, 0}, OutlineColor = {0, 0, 0}, GradientColors = {{255, 255, 0}, {0, 0, 0}}, GradientRotation = 0, GradientSpeed = 0, FlashTextColor = {255, 255, 0}, FlashOutlineColor = {255, 255, 255}, FlashDuration = 0.5,}) Score.AddMilestone({Min = 1000, Max = 1749, TextColor = {255, 255, 255}, OutlineColor = {0, 0, 0}, GradientColors = {{255, 0, 0}, {0, 0, 0}}, GradientRotation = 0, GradientSpeed = 1.5, FlashTextColor = {255, 0, 0}, FlashOutlineColor = {255, 0, 0}, FlashDuration = 0.5,}) Score.AddMilestone({Min = 1750, Max = 2499, TextColor = {0, 0, 0}, OutlineColor = {255, 255, 255}, FlashTextColor = {255, 255, 255}, FlashOutlineColor = {255, 255, 255}, FlashDuration = 0.5,}) Score.AddMilestone({Min = 2500, Max = 3249, TextColor = {0, 0, 0}, OutlineColor = {255, 0, 255}, FlashTextColor = {255, 0, 255}, FlashOutlineColor = {255, 0, 255}, FlashDuration = 0.5,}) Score.AddMilestone({Min = 3250, Max = 4999, TextColor = {0, 0, 0}, OutlineColor = {255, 255, 255}, GradientColors = {{255, 255, 255}, {0, 0, 0}}, OutlineGradientColors = {{0, 0, 0}}, FlashTextColor = {255, 255, 255}, FlashOutlineColor = {255, 255, 255}, FlashDuration = 0.5, GradientRotation = 0, GradientSpeed = 1.5,}) Score.AddMilestone({Min = 4999, Max = 9999, TextColor = {0, 0, 0}, OutlineColor = {255, 255, 255}, GradientColors = {{255, 0, 255}, {0, 255, 255}, {0, 0, 0}}, OutlineGradientColors = {{0, 0, 0}}, FlashTextColor = {255, 255, 255}, FlashOutlineColor = {255, 255, 255}, FlashDuration = 0.5, GradientRotation = 0, GradientSpeed = 1.5,}) Score.AddMilestone({Min = 10000, Max = 9999999999, TextColor = {0, 0, 0}, OutlineColor = {255, 255, 255}, OutlineGradientColors = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}}, OutlineGradientSpeed = 2, OutlineGradientRotation = 45, FlashTextColor = {255, 255, 255}, FlashOutlineColor = {255, 255, 255}, FlashDuration = 0.5, GradientRotation = 0, GradientSpeed = 1.5,}) end
+-- Car Button --
+do CarButton = {} do local BUTTON_HOVER_SOUND = "rbxassetid://10066936758" local BUTTON_CLICK_SOUND = "rbxassetid://10066942189" local READY_SOUND = "rbxassetid://8095302703" local buttonGui: ScreenGui? = nil local buttonFrame: ImageButton? = nil local buttonIcon: ImageLabel? = nil local buttonScale: UIScale? = nil local cooldownGui: ScreenGui? = nil local cooldownLabel: TextLabel? = nil local onCooldown = false local buttonCreated = false local cooldownGuiCreated = false local buttonVisible = false local clickLocked = false local visibilityToken = 0 local executionFn: (() -> ())? = nil local seatCheckConn: RBXScriptConnection? = nil local function getVehicleSeat(): VehicleSeat? local car = getCar() if not car then return nil end local seatFolder = car:FindFirstChild("Seat") local seat = (seatFolder and seatFolder:FindFirstChild("Vehicle Seat")) or car:FindFirstChild("Vehicle Seat") if seat and seat:IsA("VehicleSeat") then return seat end return nil end local function isSittingInCar(): boolean local char = LocalPlayer.Character local humanoid = char and char:FindFirstChildOfClass("Humanoid") local seat = getVehicleSeat() return humanoid ~= nil and seat ~= nil and humanoid.SeatPart == seat end local function tweenScale(ui: UIScale, target: number, duration: number?, style: Enum.EasingStyle?, direction: Enum.EasingDirection?) local tween = TweenService:Create(ui, TweenInfo.new(duration or 0.15, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), {Scale = target}) tween:Play() return tween end local function createCooldownGui() if cooldownGuiCreated then return end cooldownGuiCreated = true cooldownGui = Instance.new("ScreenGui") cooldownGui.Name = "CarCooldownGui" cooldownGui.ResetOnSpawn = false cooldownGui.Parent = PlayerGui cooldownLabel = Instance.new("TextLabel") cooldownLabel.Name = "CooldownLabel" cooldownLabel.Size = UDim2.new(0, 250, 0, 50) cooldownLabel.Position = UDim2.new(0.5, -125, 1, 50) cooldownLabel.BackgroundTransparency = 1 cooldownLabel.Font = Enum.Font.FredokaOne cooldownLabel.TextSize = 24 cooldownLabel.TextColor3 = Color3.fromRGB(255, 0, 0) cooldownLabel.Parent = cooldownGui local stroke = Instance.new("UIStroke") stroke.Thickness = 2 stroke.Color = Color3.fromRGB(0, 0, 0) stroke.Parent = cooldownLabel end local function setButtonVisible(show: boolean) if not buttonFrame or not buttonScale then return end if show then if buttonFrame.Visible and buttonVisible then return end visibilityToken += 1 buttonScale.Scale = 0 buttonFrame.Visible = true buttonVisible = true tweenScale(buttonScale, 1, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) else if not buttonFrame.Visible then buttonVisible = false return end visibilityToken += 1 local token = visibilityToken buttonVisible = false local tween = tweenScale(buttonScale, 0.01, 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In) tween.Completed:Connect(function() if token ~= visibilityToken then return end if buttonFrame then buttonFrame.Visible = false end if buttonScale then buttonScale.Scale = 1 end end) end end local function refreshButtonVisibility() if not buttonFrame then return end local shouldShow = isSittingInCar() and not onCooldown and not clickLocked setButtonVisible(shouldShow) end local function showCooldownNotifier(seconds: number) if not cooldownGui or not cooldownLabel then return end local startPos = UDim2.new(0.5, -125, 1, 50) local shownPos = UDim2.new(0.5, -125, 0.65, 0) cooldownLabel.Position = startPos cooldownLabel.TextTransparency = 0 cooldownLabel.Text = "Car Cooldown: " .. seconds cooldownLabel.TextColor3 = Color3.fromRGB(255, 0, 0) TweenService:Create(cooldownLabel, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = shownPos,}):Play() local started = tick() task.spawn(function() while tick() - started < seconds do local remaining = math.ceil(seconds - (tick() - started)) if cooldownLabel then cooldownLabel.Text = "Car Cooldown: " .. remaining end task.wait(0.2) end if cooldownLabel then cooldownLabel.Text = "Car Ready!" cooldownLabel.TextColor3 = Color3.fromRGB(85, 255, 127) end playOneShot(READY_SOUND, 1) if cooldownLabel then local flash = TweenService:Create(cooldownLabel, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 3, true), {TextTransparency = 0.5,}) flash:Play() flash.Completed:Wait() end if cooldownLabel then local tweenOut = TweenService:Create(cooldownLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = startPos,}) tweenOut:Play() tweenOut.Completed:Wait() cooldownLabel.TextTransparency = 0 end onCooldown = false clickLocked = false if buttonFrame then buttonFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) buttonFrame.Active = true end refreshButtonVisibility() end) end local function createButtonUi() if buttonCreated then return end buttonCreated = true buttonGui = Instance.new("ScreenGui") buttonGui.Name = "CarButtonGui" buttonGui.ResetOnSpawn = false buttonGui.Parent = PlayerGui buttonFrame = Instance.new("ImageButton") buttonFrame.Name = "CarButton" buttonFrame.Size = UDim2.fromOffset(65, 65) buttonFrame.AnchorPoint = Vector2.new(0.5, 0.5) buttonFrame.Position = UDim2.new(1, -57.5, 0.5, 0) buttonFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) buttonFrame.ClipsDescendants = true buttonFrame.AutoButtonColor = false buttonFrame.Active = true buttonFrame.Visible = false buttonFrame.Parent = buttonGui local carButtonWasDragged = enableDrag(buttonFrame) local corner = Instance.new("UICorner") corner.CornerRadius = UDim.new(0, 12) corner.Parent = buttonFrame local stroke = Instance.new("UIStroke") stroke.Thickness = 3 stroke.Color = Color3.fromRGB(0, 0, 0) stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border stroke.Parent = buttonFrame local texture = Instance.new("ImageLabel") texture.Name = "TextureOverlay" texture.Size = UDim2.fromScale(1, 1) texture.BackgroundTransparency = 1 texture.Image = "rbxassetid://86679746929863" texture.ImageTransparency = 0.9 texture.ScaleType = Enum.ScaleType.Tile texture.TileSize = UDim2.fromOffset(25, 25) texture.ZIndex = buttonFrame.ZIndex + 1 texture.Parent = buttonFrame buttonIcon = Instance.new("ImageLabel") buttonIcon.Name = "CenterIcon" buttonIcon.Size = UDim2.fromOffset(65, 65) buttonIcon.AnchorPoint = Vector2.new(0.5, 0.5) buttonIcon.Position = UDim2.fromScale(0.5, 0.5) buttonIcon.BackgroundTransparency = 1 buttonIcon.Image = "rbxassetid://85285353550356" buttonIcon.ZIndex = buttonFrame.ZIndex + 2 buttonIcon.Parent = buttonFrame buttonScale = Instance.new("UIScale") buttonScale.Scale = 1 buttonScale.Parent = buttonFrame buttonFrame.MouseEnter:Connect(function() if clickLocked or onCooldown or not buttonScale then return end playOneShot(BUTTON_HOVER_SOUND, 0.75) tweenScale(buttonScale, 0.85, 0.15) end) buttonFrame.MouseLeave:Connect(function() if clickLocked or onCooldown or not buttonScale then return end tweenScale(buttonScale, 1, 0.15) end) buttonFrame.MouseButton1Click:Connect(function() if carButtonWasDragged() then return end if clickLocked or onCooldown or not buttonScale or not buttonFrame then return end clickLocked = true playOneShot(BUTTON_CLICK_SOUND, 1) buttonScale.Scale = 1.45 local shrink = tweenScale(buttonScale, 0, 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In) shrink.Completed:Wait() buttonFrame.Visible = false buttonVisible = false buttonScale.Scale = 1 if executionFn then task.spawn(executionFn) end end) end function CarButton.SetUp() createButtonUi() createCooldownGui() if seatCheckConn then seatCheckConn:Disconnect() end seatCheckConn = RunService.Heartbeat:Connect(refreshButtonVisibility) end function CarButton.ButtonExecution(func: () -> ()) if type(func) == "function" then executionFn = func end end function CarButton.Cooldown(seconds: number?) local waitTime = math.max(0, seconds or 20) if waitTime > 0 then onCooldown = true if buttonFrame then buttonFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40) buttonFrame.Active = false end setButtonVisible(false) showCooldownNotifier(waitTime) else onCooldown = false if buttonFrame then buttonFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) buttonFrame.Active = true end refreshButtonVisibility() end end function CarButton.UnlockClick() clickLocked = false refreshButtonVisibility() end function CarButton.Destroy() if seatCheckConn then seatCheckConn:Disconnect() seatCheckConn = nil end if buttonGui then buttonGui:Destroy() end if cooldownGui then cooldownGui:Destroy() end buttonGui = nil buttonFrame = nil buttonIcon = nil buttonScale = nil cooldownGui = nil cooldownLabel = nil buttonCreated = false cooldownGuiCreated = false onCooldown = false buttonVisible = false clickLocked = false executionFn = nil end function CarButton.Reappear() if onCooldown then return end refreshButtonVisibility() end function CarButton.IsCooldown(): boolean return onCooldown end end end
+
+-- Ability buttons --
+do
+local A=Instance.new("ScreenGui")A.Name="AbilityButtonGui"A.ResetOnSpawn=false A.Parent=PlayerGui
+local B=UserInputService local C=TweenService
+local D=0 local E={}local F={}local G={}local H={}local I={}local J={}
+function AddAbilityButton(a)local b=a.Key or "E"local c=a.Description or "Press "..b.." to use"local d=a.Execution or function()end local e=a.ButtonId D+=1
+local f=Instance.new("TextButton")f.Size=UDim2.new(0,40,0,40)f.AnchorPoint=Vector2.new(0.5,0.5)f.BackgroundColor3=Color3.fromRGB(75,75,75)f.BorderSizePixel=0 f.Text=""f.AutoButtonColor=false f.Visible=a.StartHidden~=true f.Parent=A table.insert(E,f)if e then F[e]=f H[e]=b end f:SetAttribute("OnCooldown",false)
+local g=Instance.new("Frame")g.Size=UDim2.fromScale(1,1)g.BackgroundTransparency=1 g.Parent=f
+local h=Instance.new("UIStroke")h.Thickness=2.5 h.Color=Color3.fromRGB(50,50,50)h.ApplyStrokeMode=Enum.ApplyStrokeMode.Border h.Parent=g
+local i=Instance.new("UICorner")i.CornerRadius=UDim.new(0.1,0)i.Parent=g
+local j=Instance.new("Frame")j.Size=UDim2.fromScale(1,1)j.Position=UDim2.new(0.5,0,0.5,0)j.AnchorPoint=Vector2.new(0.5,0.5)j.BackgroundTransparency=1 j.Parent=f
+local k=Instance.new("TextLabel")k.Size=UDim2.fromScale(1,1)k.BackgroundTransparency=1 k.Text=b k.TextColor3=Color3.fromRGB(255,255,255)k.Font=Enum.Font.FredokaOne k.TextSize=22 k.Parent=j
+local l=Instance.new("UIStroke")l.Thickness=2 l.Color=Color3.fromRGB(0,0,0)l.ApplyStrokeMode=Enum.ApplyStrokeMode.Contextual l.Parent=k
+local m=Instance.new("TextLabel")m.Size=UDim2.new(0,200,0,40)m.Position=UDim2.new(0,45,0.5,0)m.AnchorPoint=Vector2.new(0,0.5)m.BackgroundTransparency=1 m.Text=c m.TextColor3=Color3.fromRGB(255,255,255)m.Font=Enum.Font.FredokaOne m.TextSize=15 m.TextXAlignment=Enum.TextXAlignment.Left m.Parent=j
+local n=Instance.new("UIStroke")n.Thickness=2 n.Color=Color3.fromRGB(0,0,0)n.ApplyStrokeMode=Enum.ApplyStrokeMode.Contextual n.Parent=m
+local o=Instance.new("UIScale")o.Scale=1 o.Parent=f
+local p,q=nil,nil local r=false local s,t=nil,nil local u=false
+local v=Color3.fromRGB(75,75,75)local w=Color3.fromRGB(255,255,255)local x=Color3.fromRGB(255,255,255)
+local function y()local visible={}for _,btn in ipairs(E)do if btn.Visible then table.insert(visible,btn)end end local z=50 local aa=(#visible-1)*z local ab=0.4 for ac,ad in ipairs(visible)do local ae=(ac-1)*z-(aa/2)ad.Position=UDim2.new(0.75,0,ab,ae)end end
+if e then J[e]=y end
+y()
+local function af()local ag=Instance.new("Sound")ag.SoundId="rbxassetid://10066936758"ag.Volume=1 ag.Parent=f ag:Play()ag.Ended:Connect(function()ag:Destroy()end)end
+local function ah()local ag=Instance.new("Sound")ag.SoundId="rbxassetid://10066942189"ag.Volume=1 ag.Parent=f ag:Play()ag.Ended:Connect(function()ag:Destroy()end)end
+local function ai()return Enum.KeyCode[H[e]or b]end
+local function aj()if q then q:Cancel()end p=C:Create(o,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=0.9})p:Play()af()end
+local function ak()if p then p:Cancel()end o.Scale=1.3 ah()q=C:Create(o,TweenInfo.new(0.18,Enum.EasingStyle.Quart,Enum.EasingDirection.Out),{Scale=1})q:Play()end
+local function al(active)u=active f:SetAttribute("OnCooldown",active)if active then f.BackgroundColor3=Color3.fromRGB(37,37,37)k.TextColor3=Color3.fromRGB(127,127,127)m.TextColor3=Color3.fromRGB(127,127,127)else f.BackgroundColor3=v k.TextColor3=w m.TextColor3=x end end
+local function am(seconds)if e and I[e]then task.cancel(I[e])I[e]=nil end u=true al(true)k.Text=tostring(seconds)local an=seconds local tid=task.spawn(function()while an>0 do task.wait(1)an-=1 if f.Parent then k.Text=tostring(an)else break end end if f.Parent then u=false al(false)k.Text=b end if e then I[e]=nil end end)if e then I[e]=tid end end
+if e then G[e]=am end
+f.MouseEnter:Connect(function()if u then return end aj()end)
+f.MouseLeave:Connect(function()if p then p:Cancel()end if q then q:Cancel()end C:Create(o,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=1}):Play()end)
+f.MouseButton1Click:Connect(function()if u or not f.Visible then return end ak()d()end)
+s=B.InputBegan:Connect(function(ap,aq)if aq or not f.Visible then return end local ar=ai()if ar and ap.KeyCode==ar and not r and not u then r=true aj()end end)
+t=B.InputEnded:Connect(function(ap)local ar=ai()if ar and ap.KeyCode==ar then r=false if not u and f.Visible then ak()d()end end end)
+f.Destroying:Connect(function()if s then s:Disconnect()end if t then t:Disconnect()end if e and I[e]then task.cancel(I[e])I[e]=nil end if e then F[e]=nil H[e]=nil G[e]=nil J[e]=nil end for yx,z in ipairs(E)do if z==f then table.remove(E,yx)break end end D-=1 y()end)end
+function RemoveAbilityButton(a)local b=F[a]if b then b:Destroy()end end
+function HideAbilityButton(a)local b=F[a]if b then b.Visible=false if J[a]then J[a]()end end end
+function ShowAbilityButton(a)local b=F[a]if b then b.Visible=true if J[a]then J[a]()end end end
+function ActivateCooldown(seconds,buttonId)local func=G[buttonId]if func then func(seconds)else warn("Button not found: "..tostring(buttonId))end end
+end
+
+-- Shop --
+local pointMultiplier = 1
+do
+Shop = {}
+do
+	local POINTS_PER_SCORE = 0.1
+	local REROLL_COST = 50
+	local points = 0
+	local shownPoints = 0
+	local pointsThread = nil
+	local pointsColorTween = nil
+	local COLOR_POINTS = Color3.fromRGB(255, 255, 255)
+	local category = 1
+	local leftUpgradePurchases = 0
+	local upgrades,abilities,owned,rightDefs,rightButtons,slotItems,slotFrames = {},{},{},{},{},{},{}
+	local built = false
+	local gui,panel,panelScale,pointsLabel,categoryLabel,rerollBtn,rerollIcon,openBtn,openScale,openTween,closeTween,refreshSlots,rerollSlots
+	local COLOR_LOCKED = Color3.fromRGB(50,50,50)
+	local COLOR_SOLD = Color3.fromRGB(50,50,50)
+	local COLOR_REROLL = Color3.fromRGB(255,165,0)
+	local COLOR_UPGRADE = Color3.fromRGB(25,255,25)
+	local COLOR_ABILITY = Color3.fromRGB(0,165,255)
+		local function make(className,parent,props) local inst=Instance.new(className) for key,value in pairs(props) do inst[key]=value end if parent then inst.Parent=parent end return inst end
+	local function addCorner(inst,radius) make("UICorner",inst,{CornerRadius=UDim.new(0,radius)}) end
+	local function addStroke(inst,thickness,color,mode) make("UIStroke",inst,{Thickness=thickness,Color=color,ApplyStrokeMode=mode or Enum.ApplyStrokeMode.Border}) end
+	local function addLabel(parent,props,strokeSize) local label=make("TextLabel",parent,props) if strokeSize then addStroke(label,strokeSize,Color3.fromRGB(0,0,0),Enum.ApplyStrokeMode.Contextual) end return label end
+	local function addButton(parent,props,radius,strokeSize) local btn=make("ImageButton",parent,props) if radius then addCorner(btn,radius) end if strokeSize then addStroke(btn,strokeSize,Color3.fromRGB(0,0,0),Enum.ApplyStrokeMode.Border) end return btn end
+	local function addTexture(parent) make("ImageLabel",parent,{Name="TextureOverlay",Size=UDim2.fromScale(1.25,1.25),Position=UDim2.fromScale(0.5,0.5),AnchorPoint=Vector2.new(0.5,0.5),BackgroundTransparency=1,Image="rbxassetid://86679746929863",ImageTransparency=0.9,ScaleType=Enum.ScaleType.Tile,TileSize=UDim2.fromOffset(25,25),ZIndex=1}) end
+	local function clickSound(parent,id,volume) local sound=Instance.new("Sound") sound.SoundId=id sound.Volume=volume or 1 sound.Parent=parent sound:Play() sound.Ended:Connect(function() sound:Destroy() end) end
+	local function makeDraggable(guiObject) local dragging=false local dragStart=nil local startPos=nil guiObject.InputBegan:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=true dragStart=input.Position startPos=guiObject.Position input.Changed:Connect(function() if input.UserInputState==Enum.UserInputState.End then dragging=false end end) end end) guiObject.InputChanged:Connect(function(input) if not dragging or not dragStart or not startPos then return end if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then local delta=input.Position-dragStart guiObject.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y) end end) end
+	local function currentPool() if category==2 then return abilities else return upgrades end end local function poolHasStock(pool) for _,item in ipairs(pool) do if not owned[item.Id] then return true end end return false end
+	local function refreshCategoryTitle() if category==2 and not poolHasStock(abilities) then category=1 end if not categoryLabel then return end if category==2 then categoryLabel.Text="Abilities" categoryLabel.TextColor3=COLOR_ABILITY else category=1 categoryLabel.Text="Upgrades" categoryLabel.TextColor3=COLOR_UPGRADE end end
+	local function paintReroll() if rerollBtn then rerollBtn.BackgroundColor3=if points<REROLL_COST then COLOR_LOCKED else COLOR_REROLL end end
+	local function setPointsText() if pointsLabel then pointsLabel.Text="Points: "..tostring(shownPoints) end paintReroll() end
+	function Shop.PointTextFlash(r,g,b,duration) if not pointsLabel then return end if pointsColorTween then pointsColorTween:Cancel() pointsColorTween=nil end pointsLabel.TextColor3=Color3.fromRGB(r,g,b) pointsColorTween=TweenService:Create(pointsLabel,TweenInfo.new(duration or 0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{TextColor3=COLOR_POINTS}) pointsColorTween:Play() end
+	local function writeRightAttributes(btn,data) btn:SetAttribute("Title",data.Title) btn:SetAttribute("Button",data.Button) btn:SetAttribute("UpgradeCount",data.UpgradeCount) btn:SetAttribute("MaxBuys",data.MaxBuys) btn:SetAttribute("RemainingBuys",data.RemainingBuys) btn:SetAttribute("Cost",data.Cost) btn:SetAttribute("BaseCost",data.BaseCost) btn:SetAttribute("CostMultiplier",data.CostMultiplier) btn:SetAttribute("Buyable",data.Buyable) btn:SetAttribute("SoldOut",data.SoldOut) btn:SetAttribute("CanAfford",data.CanAfford) btn:SetAttribute("Points",points) end
+	local function refreshAllRightButtons() for _,entry in pairs(rightButtons) do if entry.paint then entry.paint() elseif entry.updateAttributes then entry.updateAttributes() end end end
+	local function animatePoints() refreshAllRightButtons() if refreshSlots then refreshSlots() end if pointsThread then task.cancel(pointsThread) pointsThread=nil end if shownPoints==points then setPointsText() return end if points>shownPoints then Shop.PointTextFlash(0,255,0,0.3) else Shop.PointTextFlash(255,0,0,0.3) end pointsThread=task.spawn(function() local from=shownPoints local to=points local duration=0.12 local t=0 while t<duration do t+=task.wait() shownPoints=math.floor(from+(to-from)*math.min(t/duration,1)) setPointsText() end shownPoints=to setPointsText() end) end
+	local function availableItems() local list={} for _,item in ipairs(currentPool()) do if not owned[item.Id] then local taken=false for _,slot in pairs(slotItems) do if type(slot)=="table" and slot.Id==item.Id then taken=true break end end if not taken then table.insert(list,item) end end end return list end
+	local function drawSlot(index) local holder=slotFrames[index] if not holder then return end holder:ClearAllChildren() local item=slotItems[index] if item=="SOLD_OUT" then local sold=make("Frame",holder,{Size=UDim2.new(0,110,0,40),Position=UDim2.new(0,0,0.5,0),AnchorPoint=Vector2.new(0,0.5),BackgroundColor3=COLOR_SOLD,BorderSizePixel=0}) addCorner(sold,8) addStroke(sold,2,Color3.fromRGB(0,0,0)) addLabel(sold,{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text="Sold Out",TextColor3=Color3.fromRGB(180,180,180),Font=Enum.Font.FredokaOne,TextSize=14},1.5) return end if type(item)~="table" then return end local canBuy=points>=item.Price local buy=addButton(holder,{Size=UDim2.new(0,110,0,40),Position=UDim2.new(0,0,0.5,0),AnchorPoint=Vector2.new(0,0.5),BackgroundColor3=if canBuy then item.BaseColor else COLOR_LOCKED,BorderSizePixel=0,AutoButtonColor=false,ClipsDescendants=true},8,2) addLabel(buy,{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=item.Text,TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=13},1.5) addLabel(holder,{Size=UDim2.new(0,110,0,15),Position=UDim2.new(0,0,1,-2),BackgroundTransparency=1,Text=tostring(item.Price).." Pts",TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=11,TextYAlignment=Enum.TextYAlignment.Top},1.5) addLabel(holder,{Size=UDim2.new(0,200,0,40),Position=UDim2.new(0,125,0.5,0),AnchorPoint=Vector2.new(0,0.5),BackgroundTransparency=1,Text=item.Description or "",TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=14,TextXAlignment=Enum.TextXAlignment.Left,TextWrapped=true},2)
+		buy.MouseEnter:Connect(function() if points<item.Price then return end TweenService:Create(buy,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,100,0,36),BackgroundColor3=item.BaseColor:Lerp(Color3.new(0,0,0),0.3)}):Play() clickSound(buy,"rbxassetid://10066936758") end)
+		buy.MouseLeave:Connect(function() if points<item.Price then return end TweenService:Create(buy,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,110,0,40),BackgroundColor3=item.BaseColor}):Play() end)
+		buy.MouseButton1Click:Connect(function() if points<item.Price then return end points-=item.Price refreshAllRightButtons() owned[item.Id]=true if item.Bought then item.Bought() end if item.Type=="Ability" then category=1 leftUpgradePurchases=0 else leftUpgradePurchases+=1 if leftUpgradePurchases>=2 then if poolHasStock(abilities) then category=2 leftUpgradePurchases=0 else category=1 end end end if category==2 and not poolHasStock(abilities) then category=1 end refreshCategoryTitle() if rerollSlots then rerollSlots() end animatePoints() if panel then clickSound(panel,"rbxassetid://109656097452320") clickSound(panel,"rbxassetid://10066942189") end end)
+	end
+	refreshSlots=function() for i=1,3 do drawSlot(i) end end
+	rerollSlots=function() slotItems={} local pool=availableItems() for i=#pool,2,-1 do local j=math.random(i) pool[i],pool[j]=pool[j],pool[i] end for i=1,3 do slotItems[i]=pool[i] or "SOLD_OUT" end refreshSlots() end
+	local function buildRightButton(index)
+		local def=rightDefs[index] if not def or not panel then return end local buys=0 local cost=def.Cost local yMap={[1]=0.42,[2]=0.62,[3]=0.82}
+		local holder=make("Frame",panel,{Name="RightUpgradeHolder"..tostring(index),Size=UDim2.new(0,75,0,60),Position=UDim2.new(0.95,-25,yMap[index],0),AnchorPoint=Vector2.new(0.5,0.5),BackgroundTransparency=1})
+		local btn=addButton(holder,{Name="RightUpgrade"..tostring(index),Size=UDim2.new(0,75,0,40),Position=UDim2.new(0.5,0,0.6,0),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=COLOR_UPGRADE,BorderSizePixel=0,AutoButtonColor=false,ClipsDescendants=true},8,2)
+		local title=addLabel(btn,{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text=def.Title,TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=13},1.5)
+		local price=addLabel(holder,{Size=UDim2.fromScale(1,0.3),Position=UDim2.new(0,0,1,0),BackgroundTransparency=1,Text=tostring(cost).." Pts",TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=11,TextYAlignment=Enum.TextYAlignment.Top},1.5)
+		local function updateAttributes() local soldOut=buys>=def.MaxBuys local canAfford=points>=cost local buyable=(not soldOut) and canAfford local payload={Title=def.Title,Button=index,UpgradeCount=buys,MaxBuys=def.MaxBuys,RemainingBuys=math.max(def.MaxBuys-buys,0),Cost=cost,BaseCost=def.Cost,CostMultiplier=def.CostMultiplier,Buyable=buyable,SoldOut=soldOut,CanAfford=canAfford} writeRightAttributes(btn,payload) writeRightAttributes(holder,payload) end
+		local colorTween=nil
+		local function paint() if colorTween then colorTween:Cancel() colorTween=nil end if buys>=def.MaxBuys then btn.BackgroundColor3=COLOR_SOLD title.Text="Sold Out" title.TextColor3=Color3.fromRGB(180,180,180) price.Text="" elseif points<cost then btn.BackgroundColor3=COLOR_LOCKED title.Text=def.Title title.TextColor3=Color3.fromRGB(255,255,255) price.Text=tostring(cost).." Pts" else btn.BackgroundColor3=COLOR_UPGRADE title.Text=def.Title title.TextColor3=Color3.fromRGB(255,255,255) price.Text=tostring(cost).." Pts" end updateAttributes() end
+		rightButtons[index]={Button=btn,Holder=holder,updateAttributes=updateAttributes,paint=paint,getCount=function() return buys end}
+		btn.MouseEnter:Connect(function() if buys>=def.MaxBuys or points<cost then return end if colorTween then colorTween:Cancel() end colorTween=TweenService:Create(btn,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,67.5,0,36),BackgroundColor3=COLOR_UPGRADE:Lerp(Color3.new(0,0,0),0.3)}) colorTween:Play() TweenService:Create(title,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{TextSize=11.7}):Play() clickSound(btn,"rbxassetid://10066936758") end)
+		btn.MouseLeave:Connect(function() TweenService:Create(btn,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,75,0,40)}):Play() if buys<def.MaxBuys then TweenService:Create(title,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{TextSize=13}):Play() end paint() end)
+		btn.MouseButton1Click:Connect(function() if buys>=def.MaxBuys or points<cost then return end points-=cost buys+=1 if def.Bought then def.Bought(buys,def.MaxBuys,buys>=def.MaxBuys) end cost=math.floor(cost*def.CostMultiplier+0.5) if buys>=def.MaxBuys then title.Text="Sold Out" price.Text="" else price.Text=tostring(cost).." Pts" end animatePoints() clickSound(btn,"rbxassetid://109656097452320") btn.Size=UDim2.new(0,97.5,0,52) title.TextSize=16.9 TweenService:Create(btn,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,75,0,40)}):Play() TweenService:Create(title,TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{TextSize=if buys<def.MaxBuys then 13 else 11}):Play() clickSound(btn,"rbxassetid://10066942189") paint() end)
+		paint()
+	end
+	local function ensureGui()
+		if built and gui and gui.Parent then return end
+		built=true
+		gui=make("ScreenGui",PlayerGui,{Name="MainGui",ResetOnSpawn=false})
+		panel=make("Frame",gui,{Size=UDim2.new(0,500,0,300),Position=UDim2.fromScale(0.5,0.5),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=Color3.fromRGB(50,50,50),BorderSizePixel=0,ClipsDescendants=true,Active=true,Visible=false})
+		panelScale=make("UIScale",panel,{Scale=1}) addCorner(panel,12) addStroke(panel,3,Color3.fromRGB(0,0,0)) addTexture(panel) makeDraggable(panel)
+		addLabel(panel,{Size=UDim2.new(1,-20,0,40),Position=UDim2.new(0,10,0,10),BackgroundTransparency=1,Text='"Normal" Car Shop',TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=24,TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top},2)
+		categoryLabel=addLabel(panel,{Size=UDim2.new(0,100,0,20),Position=UDim2.new(0.5,-50,0,65),BackgroundTransparency=1,Text="Upgrades",TextColor3=COLOR_UPGRADE,Font=Enum.Font.FredokaOne,TextSize=32},2)
+		pointsLabel=addLabel(panel,{Size=UDim2.new(0,150,0,40),Position=UDim2.new(1,-100,0,15),AnchorPoint=Vector2.new(1,0),BackgroundTransparency=1,Text="Points: "..tostring(points),TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=18,TextXAlignment=Enum.TextXAlignment.Right,TextYAlignment=Enum.TextYAlignment.Top},1.5)
+		rerollBtn=addButton(panel,{Size=UDim2.new(0,70,0,35),Position=UDim2.new(0.09,0,0.24,0),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=COLOR_REROLL,BorderSizePixel=0,AutoButtonColor=false,ClipsDescendants=true},8,2)
+		rerollIcon=make("ImageLabel",rerollBtn,{Size=UDim2.fromScale(0.7,0.7),Position=UDim2.fromScale(0.5,0.5),AnchorPoint=Vector2.new(0.5,0.5),BackgroundTransparency=1,Image="rbxassetid://84183336178654",ScaleType=Enum.ScaleType.Fit})
+		addLabel(panel,{Size=UDim2.new(0,60,0,30),Position=UDim2.new(0.18,0,0.24,0),AnchorPoint=Vector2.new(0,0.5),BackgroundTransparency=1,Text="Reroll",TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=18,TextXAlignment=Enum.TextXAlignment.Left},1.5)
+		addLabel(panel,{Size=UDim2.new(0,80,0,20),Position=UDim2.new(0.09,0,0.34,0),AnchorPoint=Vector2.new(0.5,0.5),BackgroundTransparency=1,Text="50 Pts",TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=12,TextYAlignment=Enum.TextYAlignment.Top},1)
+		local rerollScale=make("UIScale",rerollBtn,{Scale=1})
+		rerollBtn.MouseEnter:Connect(function() if points<REROLL_COST then return end TweenService:Create(rerollScale,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=0.9}):Play() TweenService:Create(rerollBtn,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=COLOR_REROLL:Lerp(Color3.new(0,0,0),0.3)}):Play() clickSound(rerollBtn,"rbxassetid://10066936758") end)
+		rerollBtn.MouseLeave:Connect(function() TweenService:Create(rerollScale,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=1}):Play() TweenService:Create(rerollBtn,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=if points<REROLL_COST then COLOR_LOCKED else COLOR_REROLL}):Play() end)
+		rerollBtn.MouseButton1Click:Connect(function() if points<REROLL_COST then return end points-=REROLL_COST refreshAllRightButtons() animatePoints() rerollScale.Scale=1.3 if rerollIcon then rerollIcon.Rotation=0 TweenService:Create(rerollIcon,TweenInfo.new(0.25,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Rotation=360}):Play() end TweenService:Create(rerollScale,TweenInfo.new(0.18,Enum.EasingStyle.Quart,Enum.EasingDirection.Out),{Scale=1}):Play() clickSound(rerollBtn,"rbxassetid://10066942189") clickSound(rerollBtn,"rbxassetid://104363853829594") if rerollSlots then rerollSlots() end end)
+		local slotPos={UDim2.new(0.15,-25,0.42,5),UDim2.new(0.15,-25,0.62,5),UDim2.new(0.15,-25,0.82,5)}
+		for i=1,3 do slotFrames[i]=make("Frame",panel,{Size=UDim2.new(0,400,0,50),Position=slotPos[i],AnchorPoint=Vector2.new(0.1,0.5),BackgroundTransparency=1}) end
+		local closeBtn=addButton(panel,{Size=UDim2.new(0,45,0,45),Position=UDim2.new(1,-32.5,0,32.5),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=Color3.fromRGB(255,50,50),BorderSizePixel=0,AutoButtonColor=false,ClipsDescendants=true},8,3)
+		local closeScale=make("UIScale",closeBtn,{Scale=1})
+		addLabel(closeBtn,{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Text="X",TextColor3=Color3.fromRGB(255,255,255),Font=Enum.Font.FredokaOne,TextSize=26},2)
+		closeBtn.MouseEnter:Connect(function() TweenService:Create(closeScale,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=0.9}):Play() TweenService:Create(closeBtn,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=Color3.fromRGB(255,50,50):Lerp(Color3.new(0,0,0),0.3)}):Play() clickSound(closeBtn,"rbxassetid://10066936758") end)
+		closeBtn.MouseLeave:Connect(function() TweenService:Create(closeScale,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=1}):Play() TweenService:Create(closeBtn,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=Color3.fromRGB(255,50,50)}):Play() end)
+		closeBtn.MouseButton1Click:Connect(function() closeScale.Scale=1.3 clickSound(closeBtn,"rbxassetid://10066942189") task.wait(0.05) clickSound(closeBtn,"rbxassetid://10128766965") Shop.Close() end)
+		openBtn=addButton(gui,{Size=UDim2.new(0,75,0,75),Position=UDim2.new(0.75,0,0.5,0),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=Color3.fromRGB(50,50,50),BorderSizePixel=0,AutoButtonColor=false,Active=true,ClipsDescendants=true},12,3)
+		openScale=make("UIScale",openBtn,{Scale=1}) addTexture(openBtn)
+		make("ImageLabel",openBtn,{Size=UDim2.new(0,50,0,50),Position=UDim2.new(0.5,-25,0.5,-25),BackgroundTransparency=1,Image="rbxassetid://11385395241",ScaleType=Enum.ScaleType.Fit})
+		makeDraggable(openBtn)
+		openBtn.MouseEnter:Connect(function() TweenService:Create(openScale,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=0.9}):Play() TweenService:Create(openBtn,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=Color3.fromRGB(50,50,50):Lerp(Color3.new(0,0,0),0.3)}):Play() clickSound(openBtn,"rbxassetid://10066936758") end)
+		openBtn.MouseLeave:Connect(function() TweenService:Create(openScale,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=1}):Play() TweenService:Create(openBtn,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=Color3.fromRGB(50,50,50)}):Play() end)
+		openBtn.MouseButton1Click:Connect(function() openScale.Scale=1.45 clickSound(openBtn,"rbxassetid://10066942189") TweenService:Create(openScale,TweenInfo.new(0.18,Enum.EasingStyle.Quart,Enum.EasingDirection.Out),{Scale=1}):Play() if panel and panel.Visible then Shop.Close() else Shop.Open() end end)
+		for i=1,3 do if rightDefs[i] then buildRightButton(i) end end
+		refreshCategoryTitle() rerollSlots() setPointsText()
+	end
+	function Shop.SetDriving(active) ensureGui() if active then Shop.Close() if openBtn then openBtn.Visible=false openBtn.Active=false openBtn.AutoButtonColor=false end if panel then panel.Visible=false panel.Active=false end else if openBtn then openBtn.Visible=true openBtn.Active=true openBtn.AutoButtonColor=false end if panel then panel.Active=true end end end
+	function Shop.SetUp() ensureGui() end
+	function Shop.Open() ensureGui() if not panel or not panelScale then return end if closeTween then closeTween:Cancel() end panel.Visible=true panelScale.Scale=0.85 openTween=TweenService:Create(panelScale,TweenInfo.new(0.15,Enum.EasingStyle.Quart,Enum.EasingDirection.Out),{Scale=1}) openTween:Play() end
+	function Shop.Close() if not panel or not panelScale then return end if openTween then openTween:Cancel() end closeTween=TweenService:Create(panelScale,TweenInfo.new(0.1,Enum.EasingStyle.Quart,Enum.EasingDirection.In),{Scale=0.85}) closeTween:Play() closeTween.Completed:Connect(function() if panel then panel.Visible=false end if panelScale then panelScale.Scale=1 end end) end
+	function Shop.GetPoints() return points end
+	function Shop.SetPoints(amount) points=math.max(0,math.floor(amount)) refreshAllRightButtons() animatePoints() end
+	function Shop.AddPoints(amount) local add=math.floor(amount) points=math.max(0,points+add) if add>0 then local s=Instance.new("Sound") s.SoundId="rbxassetid://138273059623491" s.Volume=1 s.Parent=SoundService s:Play() s.Ended:Connect(function() s:Destroy() end) end refreshAllRightButtons() animatePoints() end
+	function Shop.AwardFromScore(score) local gained=math.floor(math.max(0,score)*POINTS_PER_SCORE*pointMultiplier) if gained>0 then Shop.AddPoints(gained) end return gained end
+	function Shop.GetRightButton(index) local entry=rightButtons[index] return entry and entry.Button or nil end
+	function Shop.AddLeftUpgrade(config) local kind=config.Type or "Upgrade" local pool,color if kind=="Upgrade" then pool,color=upgrades,COLOR_UPGRADE elseif kind=="Ability" then pool,color=abilities,COLOR_ABILITY else warn("Invalid shop type: "..tostring(kind)) return end table.insert(pool,{Id=config.Title or "Upgrade",Text=config.Title or "Upgrade",Description=config.Description or "",Price=tonumber(config.Cost) or 100,BaseColor=color,Type=kind,Bought=config.Bought or function() end}) if built and rerollSlots then rerollSlots() end end function Shop.BanUpgrade(id) owned[id]=true for i=1,3 do local item=slotItems[i] if type(item)=="table" and item.Id==id then slotItems[i]="SOLD_OUT" end end if refreshSlots then refreshSlots() end end
+	function Shop.RightButton(config) local index=config.Button or 1 if index<1 or index>3 then warn("Invalid shop button number") return end rightDefs[index]={Title=config.Title or "Button",Cost=tonumber(config.Cost) or 100,CostMultiplier=tonumber(config.CostMultiplier) or 1.5,MaxBuys=config.MaxBuys or 5,Bought=config.Bought or function() end} if built then local old=rightButtons[index] if old and old.Holder then old.Holder:Destroy() end rightButtons[index]=nil buildRightButton(index) end end
+end
+end
+
+-- User faced functions used here --
+do
+local DriveModule = Drive
+local CarAttachModule = CarAttach
+local HitboxModule = Hitboxes
+local FuelBarModule = FuelBar
+local ScoreModule = Score
+local ShopModule = Shop
+
+local visualRemote = ReplicatedStorage:FindFirstChild("CarWheelVisual")
+if not visualRemote then
+	visualRemote = ReplicatedStorage:WaitForChild("CarWheelVisual", 5)
+end
+local lastVisualSend = 0
+local function packCFrame(cf: CFrame)
+	local x,y,z,r00,r01,r02,r10,r11,r12,r20,r21,r22 = cf:GetComponents()
+	return {x,y,z,r00,r01,r02,r10,r11,r12,r20,r21,r22}
+end
+local function unpackCFrame(list)
+	if typeof(list)~="table" or #list<12 then return nil end
+	return CFrame.new(list[1],list[2],list[3],list[4],list[5],list[6],list[7],list[8],list[9],list[10],list[11],list[12])
+end
+local function wheelsOn(car: Model?): {BasePart}
+	local wheels = {}
+	if not car then return wheels end
+	for _,inst in ipairs(car:GetDescendants()) do
+		if inst:IsA("BasePart") and string.lower(inst.Name)=="wheel" and inst.Parent and string.lower(inst.Parent.Name)=="wheel" then
+			table.insert(wheels, inst)
+		end
+	end
+	table.sort(wheels, function(a,b)
+		if math.abs(a.Position.Z-b.Position.Z)>0.05 then return a.Position.Z<b.Position.Z end
+		return a.Position.X<b.Position.X
+	end)
+	return wheels
+end
+local function carFromUserId(userId: number): Model?
+	local plr = Players:GetPlayerByUserId(userId)
+	if not plr then return getCar() end
+	local char = plr.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local seat = hum and hum.SeatPart
+	if seat then
+		local model = seat:FindFirstAncestorOfClass("Model")
+		if model then return model end
+	end
+	return getCar()
+end
+local function sendWheelVisuals()
+	if not visualRemote or not drivingNow then return end
+	local now = os.clock()
+	if now-lastVisualSend<0.05 then return end
+	lastVisualSend = now
+	local packed = {}
+	if Drive._orbiting and Drive._orbitUnits then
+		for _,unit in ipairs(Drive._orbitUnits) do
+			if unit.part and unit.part.Parent then
+				table.insert(packed, packCFrame(unit.part.CFrame))
+			end
+		end
+	elseif Drive.IsHoverWheels and Drive.IsHoverWheels() then
+		for _,wheelPart in ipairs(getWheels()) do
+			table.insert(packed, packCFrame(wheelPart.CFrame))
+		end
+	end
+	visualRemote:FireServer({
+		hover = Drive.IsHoverWheels and Drive.IsHoverWheels() or false,
+		orbit = Drive._orbiting and true or false,
+		cfs = packed,
+	})
+end
+if visualRemote then
+	visualRemote.OnClientEvent:Connect(function(userId, data)
+		if userId==LocalPlayer.UserId then return end
+		if typeof(data)~="table" then return end
+		local car = carFromUserId(userId)
+		if not car then return end
+		local wheels = wheelsOn(car)
+		if data.clear or (not data.hover and not data.orbit) then
+			return
+		end
+		if typeof(data.cfs)=="table" then
+			for i,list in ipairs(data.cfs) do
+				local wheelPart = wheels[i]
+				local cf = unpackCFrame(list)
+				if wheelPart and cf then
+					wheelPart.CFrame = cf
+				end
+			end
+		end
+	end)
+	RunService.Heartbeat:Connect(function()
+		sendWheelVisuals()
+	end)
+end
+
+local drivingNow = false local driveReady = false local dashUnlocked = false local hoverWheelsUnlocked = false local orbitingWheelUnlocked = false local baybladeUnlocked = false local spinnerOfDeathUnlocked = false local startupWait = 3 local driveCooldown = 20
+
+local originalIsRotatingTires = DriveModule.IsRotatingTires
+local originalApplyWheelRoll = DriveModule.ApplyWheelRoll
+local defaultWheelData = {}
+
+local function captureDefaultWheelData()
+	defaultWheelData = {}
+	local currentCar = getCar()
+	local rootPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+	if not rootPart then return end
+	for _, wheelPart in ipairs(getWheels()) do
+		if wheelPart and wheelPart.Parent then
+			table.insert(defaultWheelData, {
+				Part = wheelPart,
+				LocalOffset = rootPart.CFrame:ToObjectSpace(wheelPart.CFrame),
+			})
+		end
+	end
+end
+
+DriveModule.IsRotatingTires = function()
+	return (drivingNow and driveReady) or (originalIsRotatingTires and originalIsRotatingTires()) or false
+end
+
+DriveModule.ApplyWheelRoll = function()
+	if originalApplyWheelRoll then
+		originalApplyWheelRoll()
+	end
+end
+
+local function ensureHoverBaseplate()
+	local existing = Workspace:FindFirstChild("HoverWheelsAntiVoidBaseplate")
+	if existing and existing:IsA("BasePart") then return existing end
+	local baseplate = Instance.new("Part")
+	baseplate.Name = "HoverWheelsAntiVoidBaseplate"
+	baseplate.Size = Vector3.new(2048, 1, 2048)
+	baseplate.CFrame = CFrame.new(0, -9, 0)
+	baseplate.Anchored = true
+	baseplate.CanCollide = true
+	baseplate.Transparency = 1
+	baseplate.CastShadow = false
+	baseplate.Parent = Workspace
+	return baseplate
+end
+local function removeHoverBaseplate()
+	local existing = Workspace:FindFirstChild("HoverWheelsAntiVoidBaseplate")
+	if existing and existing:IsA("BasePart") then
+		existing.CanCollide = false
+	end
+end
+local fuelDuration = 10 local fuelRefillDuration = 1.25 local scoreMultiplier = 1
+
+ShopModule.AddLeftUpgrade({
+	Type = "Upgrade",
+	Title = "Business\nLicense",
+	Cost = 188,
+	Description = "Increases point gain by 25%.",
+	Bought = function()
+		pointMultiplier = 1.25
+		print("Bought Business License: Point Gain x", pointMultiplier)
+	end
+})
+ShopModule.AddLeftUpgrade({
+	Type = "Upgrade",
+	Title = "More Fuel Refill",
+	Cost = 175,
+	Description = "Increases the fuel refill by 0.5 seconds.",
+	Bought = function()
+		fuelRefillDuration = 1.75
+		print("Bought More Fuel Refill: Refill", fuelRefillDuration, "seconds")
+	end
+})
+
+ShopModule.AddLeftUpgrade({
+	Type = "Upgrade",
+	Title = "Quick Start",
+	Cost = 250,
+	Description = "Makes car start up 25% faster.",
+	Bought = function()
+		startupWait = 2.25
+		print("Bought Quick Start")
+	end
+})
+
+ShopModule.AddLeftUpgrade({
+	Type = "Upgrade",
+	Title = "Faster Repair",
+	Cost = 275,
+	Description = "Cuts the car cooldown in half.",
+	Bought = function()
+		driveCooldown = 10
+		print("Bought Faster Repair")
+	end
+})
+
+ShopModule.AddLeftUpgrade({
+	Type = "Upgrade",
+	Title = "Hover-Wheels",
+	Cost = 350,
+	Description = "Turns the wheels upward while driving and enables hovering.",
+	Bought = function()
+		hoverWheelsUnlocked = true
+		orbitingWheelUnlocked = false
+		ShopModule.BanUpgrade("Orbiting Wheel")
+		ShopModule.BanUpgrade("Bayblade")
+		print("Bought Hover-Wheels")
+	end
+})
+
+ShopModule.AddLeftUpgrade({
+	Type = "Upgrade",
+	Title = "Orbiting Wheel",
+	Cost = 450,
+	Description = "One wheel orbits the car while facing up.",
+	Bought = function()
+		orbitingWheelUnlocked = true
+		hoverWheelsUnlocked = false
+		ShopModule.BanUpgrade("Hover-Wheels")
+		print("Bought Orbiting Wheel")
+		ShopModule.AddLeftUpgrade({
+			Type = "Upgrade",
+			Title = "Bayblade",
+			Cost = 1750,
+			Description = "Adds a second orbiting wheel.",
+			Bought = function()
+				baybladeUnlocked = true
+				print("Bought Bayblade")
+				ShopModule.AddLeftUpgrade({
+					Type = "Ability",
+					Title = "Spinner\nOf Death",
+					Cost = 500,
+					Description = "Press E to spin the orbiting wheels to extreme speed.",
+					Bought = function()
+						spinnerOfDeathUnlocked = true
+						print("Bought Spinner Of Death")
+					end
+				})
+			end
+		})
+	end
+})
+
+ShopModule.AddLeftUpgrade({
+	Type = "Ability",
+	Title = "Dash",
+	Cost = 300,
+Description = "Dash",
+	Bought = function()
+		dashUnlocked = true
+		print("Bought Dash ability")
+	end
+})
+
+ShopModule.RightButton({
+	Button = 1,
+	Title = "Speed",
+	Cost = 50,
+	CostMultiplier = 1.5,
+	MaxBuys = 5,
+	Bought = function(upgradeCount, maxBuys, soldOut)
+		local speedMultiplier = 1.05 ^ upgradeCount
+		local accelerationMultiplier = 1.025 ^ upgradeCount
+		local newSpeed = 1.5 * speedMultiplier
+		local newAcceleration = 8 * accelerationMultiplier
+
+		DriveModule.SetSpeed(newSpeed)
+		DriveModule.SetAcceleration(newAcceleration)
+
+		print("Speed upgraded:", upgradeCount, "Speed x", speedMultiplier, "Speed:", newSpeed, "Acceleration x", accelerationMultiplier, "Acceleration:", newAcceleration)
+	end
+})
+ShopModule.RightButton({
+	Button = 2,
+	Title = "Longer fuel",
+	Cost = 30,
+	CostMultiplier = 1.5,
+	MaxBuys = 5,
+	Bought = function(upgradeCount, maxBuys, soldOut)
+		fuelDuration = 10 + upgradeCount
+		print("Longer fuel", upgradeCount, "Duration:", fuelDuration, "seconds", maxBuys, soldOut)
+	end
+})
+ShopModule.RightButton({
+	Button = 3,
+	Title = "Higher\nPerformance",
+	Cost = 200,
+	CostMultiplier = 1.5,
+	MaxBuys = 3,
+	Bought = function(upgradeCount, maxBuys, soldOut)
+		scoreMultiplier = 1.25 ^ upgradeCount
+		print("Higher Performance", upgradeCount, "x", scoreMultiplier, maxBuys, soldOut)
+	end
+})
+ShopModule.SetUp()
+ShopModule.AddPoints(10000)
+AddAbilityButton({
+	Key = "E",
+	Description = "Press E to drive",
+	ButtonId = "Drive",
+	StartHidden = true,
+	Execution = function()
+		if drivingNow then
+			return
+		end
+		drivingNow = true
+		driveReady = false
+		ShopModule.SetDriving(true)
+		HideAbilityButton("Drive")
+		HideAbilityButton("Dash")
+		if not hoverWheelsUnlocked then
+			DriveModule.RotatingTires(true)
+			captureDefaultWheelData()
+		end
+		ScoreModule.ResetScore()
+		FuelBarModule.SlideIn()
+		FuelBarModule.SetFuel(1)
+		ScoreModule.FlyUp(1)
+		ScoreModule.PassiveRotating(15, 0.75)
+		task.wait(0.25)
+		if hoverWheelsUnlocked then
+			ensureHoverBaseplate()
+			local hoverBaseplate = Workspace:FindFirstChild("HoverWheelsAntiVoidBaseplate")
+			if hoverBaseplate and hoverBaseplate:IsA("BasePart") then
+				hoverBaseplate.CanCollide = true
+			end
+		end
+		CarAttachModule.StartUpCar()
+		if hoverWheelsUnlocked then
+			DriveModule.SetHoverWheels(true)
+		end
+		DriveModule.CarSmoke(true)
+		task.wait(startupWait)
+		if orbitingWheelUnlocked and not hoverWheelsUnlocked then
+			DriveModule._orbitWheelCount = if baybladeUnlocked then 2 else 1
+			DriveModule.SetOrbitingWheel(true)
+		end
+		driveReady = true
+		if dashUnlocked then
+			ShowAbilityButton("Dash")
+		end
+		if spinnerOfDeathUnlocked then
+			ShowAbilityButton("Spinner")
+		end
+
+		HitboxModule.AddHitbox({
+			Offset = Vector3.new(0, 0, -3),
+			Size = Vector3.new(8, 8, 8),
+			HitCooldown = 1,
+			TouchExecution = function(part)
+				ScoreModule.TextFlash()
+				ScoreModule.SpinScore(0.5)
+				HitboxModule.PlayS("rbxassetid://124543461907751", 1, 0)
+				FuelBarModule.AddFuel(fuelRefillDuration / fuelDuration, 0.5)
+				local scoreAward = math.floor(250 * scoreMultiplier + 0.5)
+				ScoreModule.AddScore(scoreAward)
+				ScoreModule.ScoreNotif("Ran-over", scoreAward)
+				HitboxModule.HitEffect(part, 255, 0, 0, 0.5)
+				task.spawn(function()
+					local events = ReplicatedStorage:FindFirstChild("Events")
+					local butcher = events and events:FindFirstChild("butcherAttack")
+					if butcher then
+						for i = 1, 3 do
+							pcall(function()
+								butcher:InvokeServer("hitConfirm")
+							end)
+							if i < 3 then
+								task.wait(0.1)
+							end
+						end
+					end
+				end)
+			end,
+		})
+
+		FuelBarModule.BarShaking(true)
+		FuelBarModule.StartDraining(1 / fuelDuration)
+		DriveModule._hoverStartupActive = false
+		DriveModule.CarDrive(true)
+		if hoverWheelsUnlocked then
+			local currentCar = getCar()
+			local primaryPart = currentCar and (currentCar.PrimaryPart or currentCar:FindFirstChildWhichIsA("BasePart"))
+			if primaryPart then
+				local secondDriveSound = Instance.new("Sound")
+				secondDriveSound.Name = "DriveEngineSoundSecondary"
+				secondDriveSound.SoundId = "rbxassetid://116593009114624"
+				secondDriveSound.Volume = 2
+				secondDriveSound.Looped = true
+				secondDriveSound.PlaybackSpeed = 1.65
+				secondDriveSound.Parent = primaryPart
+				secondDriveSound:Play()
+				DriveModule._secondDriveSound = secondDriveSound
+			end
+		end
+		DriveModule.SpeedLines(true)
+	end
+})
+
+AddAbilityButton({
+	Key = "Q",
+Description = "Dash",
+	ButtonId = "Dash",
+	StartHidden = true,
+	Execution = function()
+		if not drivingNow or not driveReady or not dashUnlocked then
+			return
+		end
+		local fuelCost = 2.5 / math.max(fuelDuration, 0.001)
+		if FuelBarModule.GetFuel() < fuelCost then
+			return
+		end
+		if not DriveModule.Dash or not DriveModule.Dash(75) then
+			return
+		end
+		FuelBarModule.ConsumeFuel(fuelCost)
+		ActivateCooldown(7, "Dash")
+
+		local characterNow = LocalPlayer.Character
+		local root = characterNow and characterNow:FindFirstChild("HumanoidRootPart")
+		if not root then
+			return
+		end
+
+		local tempPart = Instance.new("Part")
+		tempPart.Name = "DashParticlePart"
+		tempPart.Size = Vector3.new(2, 2, 2)
+		tempPart.CFrame = root.CFrame * CFrame.new(0, 0, -5)
+		tempPart.Anchored = true
+		tempPart.CanCollide = true
+		tempPart.Transparency = 1
+		tempPart.Parent = Workspace
+
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Texture = "rbxassetid://76255110114797"
+		emitter.Rate = 20
+		emitter.Speed = NumberRange.new(5, 5)
+		emitter.Lifetime = NumberRange.new(0.25, 0.25)
+		emitter.RotSpeed = NumberRange.new(0, 0)
+		emitter.Rotation = NumberRange.new(-100, 100)
+		emitter.Acceleration = Vector3.zero
+		emitter.Drag = 0
+		emitter.LightEmission = 1
+		emitter.LightInfluence = 0
+		emitter.ZOffset = 0
+		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+		emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 40)})
+		emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.75, 0), NumberSequenceKeypoint.new(1, 1.0022189617156982)})
+		emitter.EmissionDirection = Enum.NormalId.Top
+		emitter.Orientation = Enum.ParticleOrientation.FacingCamera
+		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.None
+		emitter.FlipbookFramerate = NumberRange.new(1, 1)
+		emitter.FlipbookMode = Enum.ParticleFlipbookMode.Loop
+		emitter.FlipbookStartRandom = false
+		emitter.Brightness = 3
+		emitter.Squash = NumberSequence.new(0)
+		emitter.Shape = Enum.ParticleEmitterShape.Box
+		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		emitter.SpreadAngle = Vector2.zero
+		emitter.WindAffectsDrag = false
+		emitter.TimeScale = 1
+		emitter.VelocityInheritance = 0
+		emitter.LockedToPart = false
+		emitter:SetAttribute("EmitCount", "1")
+		emitter.Enabled = true
+		emitter.Parent = tempPart
+
+		local dashSounds = {"rbxassetid://6883650972", "rbxassetid://140334012603496"}
+		for _, soundId in ipairs(dashSounds) do
+			local sound = Instance.new("Sound")
+			sound.SoundId = soundId
+			sound.Volume = 1
+			sound.Parent = root
+			sound:Play()
+			sound.Ended:Connect(function()
+				if sound.Parent then sound:Destroy() end
+			end)
+		end
+
+		task.spawn(function()
+			local started = tick()
+			local particleDisabled = false
+			while tick() - started < 0.75 and tempPart.Parent and drivingNow do
+				local elapsed = tick() - started
+				if not particleDisabled and elapsed >= 0.2 then
+					particleDisabled = true
+					if emitter and emitter.Parent then emitter.Enabled = false end
+				end
+				local currentCharacter = LocalPlayer.Character
+				local currentRoot = currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart")
+				if currentRoot then
+					tempPart.CFrame = currentRoot.CFrame * CFrame.new(0, 0, -5)
+				end
+				task.wait(0.05)
+			end
+			if emitter and emitter.Parent and not particleDisabled then emitter.Enabled = false end
+			local elapsed = tick() - started
+			local remaining = 1.5 - elapsed
+			if remaining > 0 then task.wait(remaining) end
+			if tempPart and tempPart.Parent then tempPart:Destroy() end
+		end)
+	end
+})
+
+AddAbilityButton({
+	Key = "X",
+	Description = "Stop",
+	ButtonId = "Stop",
+	StartHidden = true,
+	Execution = function()
+		if not drivingNow or not driveReady then
+			return
+		end
+		FuelBarModule.ForceEmpty()
+	end
+})
+
+AddAbilityButton({
+	Key = "E",
+	Description = "Spinner Of Death",
+	ButtonId = "Spinner",
+	StartHidden = true,
+	Execution = function()
+		if not drivingNow or not driveReady or not spinnerOfDeathUnlocked then
+			return
+		end
+		if DriveModule._spinnerActive then
+			return
+		end
+		DriveModule._spinnerActive = true
+		HitboxModule.PlayS("rbxassetid://111527667207953", 1, 0)
+		local oldSpeed = DriveModule.GetSpeed()
+		DriveModule.SetSpeed(oldSpeed * 1.2)
+		DriveModule._orbitSpinSpeed = 270 * 3.5
+		task.delay(7.5, function()
+			DriveModule._orbitSpinSpeed = 270
+			DriveModule.SetSpeed(oldSpeed)
+			DriveModule._spinnerActive = false
+		end)
+		ActivateCooldown(15, "Spinner")
+	end
+})
+
+FuelBarModule.FuelEmpty({
+	Execution = function()
+		HitboxModule.DestroyHitboxes()
+		DriveModule.CarDrive(false)
+		local secondDriveSound = DriveModule._secondDriveSound
+		if secondDriveSound then
+			secondDriveSound:Stop()
+			secondDriveSound:Destroy()
+			DriveModule._secondDriveSound = nil
+		end
+		DriveModule.SetHoverWheels(false)
+		zeroCharacterVerticalVelocity()
+		DriveModule._spinnerActive = false
+		DriveModule._orbitSpinSpeed = 270
+		DriveModule.SetOrbitingWheel(false)
+		removeHoverBaseplate()
+		DriveModule.SpeedLines(false)
+		DriveModule.CarSmoke(false)
+		DriveModule.RotatingTires(false)
+		local runScore = ScoreModule.GetScore()
+		local gained = ShopModule.AwardFromScore(runScore)
+		if gained > 0 then
+			ScoreModule.ScoreNotif("Points", gained)
+		end
+		ScoreModule.FlyDown(0.5)
+		FuelBarModule.BarFlash(Color3.fromRGB(255, 0, 0), 0.3)
+		task.wait(0.5)
+		FuelBarModule.BarShaking(false)
+		task.wait(0.5)
+		FuelBarModule.SlideOut()
+		CarAttachModule.CharacterCarUnlock()
+		zeroCharacterVerticalVelocity()
+		drivingNow = false
+		driveReady = false
+		HideAbilityButton("Dash")
+		ShopModule.SetDriving(false)
+		ActivateCooldown(driveCooldown, "Drive")
+	end,
+})
+
+task.spawn(function()
+	while true do
+		local seated = isSittingInCar()
+		if seated and not drivingNow then
+			ShowAbilityButton("Drive")
+		else
+			HideAbilityButton("Drive")
+		end
+		if drivingNow and driveReady and dashUnlocked then
+			ShowAbilityButton("Dash")
+		else
+			HideAbilityButton("Dash")
+		end
+		if drivingNow and driveReady and spinnerOfDeathUnlocked then
+			ShowAbilityButton("Spinner")
+		else
+			HideAbilityButton("Spinner")
+		end
+		if drivingNow and driveReady then
+			ShowAbilityButton("Stop")
+		else
+			HideAbilityButton("Stop")
+		end
+		task.wait(0.1)
+	end
+end)
+end
+
+end
+
+
+
+
